@@ -6,6 +6,8 @@ members = ["crates/vtui-core","crates/vtui-macros"]
 name = "vtui"
 version = "0.1.0-alpha"
 edition = "2024"
+description = "A simple event-driven terminal UI framework"
+license = "MIT"
 
 [dependencies]
 anyhow = "1.0.100"

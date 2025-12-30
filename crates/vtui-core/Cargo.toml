@@ -2,6 +2,8 @@
 name = "vtui-core"
 version = "0.1.0-alpha"
 edition = "2024"
+description = "A simple event-driven terminal UI framework"
+license = "MIT"
 
 [dependencies]
 ratatui = "0.30.0"
