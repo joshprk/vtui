@@ -1,4 +1,8 @@
-use std::{any::{Any, TypeId}, collections::{HashMap, VecDeque}, fmt::Debug};
+use std::{
+    any::{Any, TypeId},
+    collections::{HashMap, VecDeque},
+    fmt::Debug,
+};
 
 use ratatui::{Frame, buffer::Buffer, layout::Rect};
 
@@ -47,10 +51,7 @@ impl Component {
             }
         });
 
-        self.listeners
-            .entry(type_id)
-            .or_default()
-            .push(wrapped);
+        self.listeners.entry(type_id).or_default().push(wrapped);
     }
 
     /// Registers a draw handler that specifies how this component is rendered.
@@ -123,9 +124,13 @@ impl Runtime {
     /// semantically observable. For such events, only the most recent state within an update cycle
     /// is guaranteed to be delivered.
     pub fn update(&mut self) {
-        let Some(mut evt) = self.inbox.pop_back() else { return; };
+        let Some(mut evt) = self.inbox.pop_back() else {
+            return;
+        };
         let type_id = (*evt).type_id();
-        let Some(listeners) = self.root.listeners.get_mut(&type_id) else { return; };
+        let Some(listeners) = self.root.listeners.get_mut(&type_id) else {
+            return;
+        };
 
         for listener in listeners {
             // Dereference Box<dyn Any> to get &mut dyn Any for listener's expected signature

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use ratatui::style::Style;
-use vtui::prelude::{component, Component};
+use vtui::prelude::{Component, component};
 use vtui_core::Tick;
 
 #[component]
@@ -11,7 +11,8 @@ fn App(c: &mut Component) {
 
     c.draw(move |ctx| {
         let text = text.clone();
-        ctx.buf.set_string(1, 1, text.borrow().as_str(), Style::default());
+        ctx.buf
+            .set_string(1, 1, text.borrow().as_str(), Style::default());
     });
 
     c.listen::<Tick>(move |evt| {
