@@ -8,9 +8,7 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
-use vtui_core::{Component, Runtime};
-
-static DEFAULT_MAX_FPS: usize = 60;
+use vtui_core::{Component, LaunchConfig, Runtime};
 
 pub mod prelude {
     pub use vtui_core::{Component, Event};
@@ -23,10 +21,11 @@ pub mod prelude {
 /// side effects. Once the runtime is built, registration is closed and execution begins.
 pub fn launch(factory: fn(&mut Component)) -> anyhow::Result<()> {
     let mut root = Component::default();
+    let config = LaunchConfig::default();
 
     factory(&mut root);
 
-    let mut runtime = Runtime::new(root.build(), Some(DEFAULT_MAX_FPS));
+    let mut runtime = Runtime::new(root.build(), config);
 
     crossterm::terminal::enable_raw_mode()?;
     crossterm::execute!(

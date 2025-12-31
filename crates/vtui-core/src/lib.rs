@@ -110,9 +110,9 @@ pub struct Runtime {
 
 impl Runtime {
     /// Creates a new [`Runtime`].
-    pub fn new(root: Node, fps: Option<usize>) -> Self {
+    pub fn new(root: Node, config: LaunchConfig) -> Self {
         Self {
-            fps,
+            fps: config.fps,
             root,
             inbox: VecDeque::default(),
         }
@@ -153,6 +153,17 @@ impl Runtime {
     /// Returns if an event loop should exit immediately.
     pub fn should_exit(&self) -> bool {
         false
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct LaunchConfig {
+    fps: Option<usize>
+}
+
+impl Default for LaunchConfig {
+    fn default() -> Self {
+        Self { fps: Some(60) }
     }
 }
 
