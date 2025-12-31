@@ -2,7 +2,9 @@ use std::io;
 
 use crossterm::{event::{DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste, EnableFocusChange, EnableMouseCapture}, terminal::{EnterAlternateScreen, LeaveAlternateScreen}};
 use ratatui::{Terminal, prelude::CrosstermBackend};
-use vtui_core::{Component};
+use vtui_core::{Component, Runtime};
+
+static DEFAULT_MAX_FPS: usize = 60;
 
 pub mod prelude {
     pub use vtui_core::{Component, Event};
@@ -18,7 +20,10 @@ pub async fn launch(factory: fn(&mut Component)) -> anyhow::Result<()> {
 
     factory(&mut root);
 
-    let mut runtime = root.build();
+    let mut runtime = Runtime::new(
+        root.build(),
+        Some(DEFAULT_MAX_FPS),
+    );
 
     crossterm::terminal::enable_raw_mode()?;
     crossterm::execute!(

@@ -1,8 +1,9 @@
-use std::any::{Any, TypeId};
+use std::{any::{Any, TypeId}, collections::{HashMap, VecDeque}, fmt::Debug};
 
 use ratatui::{Frame, buffer::Buffer, layout::Rect};
 
 type DrawHandler = Box<dyn FnMut(DrawContext)>;
+type Listener = Box<dyn FnMut(&mut dyn Any)>;
 
 /// A marker trait for runtime signals.
 ///
@@ -12,7 +13,7 @@ type DrawHandler = Box<dyn FnMut(DrawContext)>;
 ///
 /// Events carry no control flow and must not fail. All state transitions in response to an event
 /// occur inside registered listeners during a runtime update.
-pub trait Event {}
+pub trait Event: Clone + Debug {}
 
 /// A runtime event where some producer wishes to continue the flow of time.
 ///
@@ -21,6 +22,7 @@ pub trait Event {}
 ///
 /// The exact frequency and batching behavior are runtime-defined and may vary depending on
 /// configuration.
+#[derive(Clone, Debug)]
 pub struct Tick {}
 
 impl Event for Tick {}
@@ -31,19 +33,24 @@ impl Event for Tick {}
 /// runtime.
 #[derive(Default)]
 pub struct Component {
-    draw: Option<DrawHandler>
+    draw: Option<DrawHandler>,
+    listeners: HashMap<TypeId, Vec<Listener>>,
 }
 
 impl Component {
     /// Registers a listener for a specific [`Event`].
-    pub fn listen<E: Event + 'static>(&mut self, mut listener: impl FnMut(&E) + 'static) {
+    pub fn listen<E: Event + 'static>(&mut self, mut listener: impl FnMut(&mut E) + 'static) {
         let type_id = TypeId::of::<E>();
-
         let wrapped = Box::new(move |event: &mut dyn Any| {
             if let Some(event) = event.downcast_mut::<E>() {
                 listener(event);
             }
         });
+
+        self.listeners
+            .entry(type_id)
+            .or_default()
+            .push(wrapped);
     }
 
     /// Registers a draw handler that specifies how this component is rendered.
@@ -53,8 +60,8 @@ impl Component {
 
     /// Builds the [`Component`] into a [`Runtime`], which can be used at runtime to perform the
     /// declared behavior of this [`Component`].
-    pub fn build(self) -> Runtime {
-        Runtime::new(self.draw)
+    pub fn build(self) -> Node {
+        Node::from(self)
     }
 }
 
@@ -90,35 +97,81 @@ pub struct DrawContext<'a> {
 ///
 /// # Concurrency
 ///
-/// The runtime is single-threaded and not [`Send`] or [`Sync`]. Concurrent systems,
-/// such as async tasks or input streams, may enqueue events via channels, but
-/// the runtime itself processes all events deterministically on one thread.
+/// The runtime is single-threaded and not [`Send`] or [`Sync`]. Concurrent systems, such as asynchronous
+/// tasks or input streams, may enqueue events via channels, but the runtime itself processes all events
+/// deterministically on one thread.
 #[derive(Default)]
 pub struct Runtime {
-    draw: Option<DrawHandler>,
+    fps: Option<usize>,
+    root: Node,
+    inbox: VecDeque<Box<dyn Any>>,
 }
 
 impl Runtime {
-    pub fn new(draw: Option<DrawHandler>) -> Self {
-        Self { draw }
+    /// Creates a new [`Runtime`].
+    pub fn new(root: Node, fps: Option<usize>) -> Self {
+        Self {
+            fps,
+            root,
+            inbox: VecDeque::default(),
+        }
     }
 
+    /// Yields to the runtime so that it may consume incoming events.
+    ///
+    /// The runtime may choose to batch, drop, or coalesce events whose intermediate states are not
+    /// semantically observable. For such events, only the most recent state within an update cycle
+    /// is guaranteed to be delivered.
     pub fn update(&mut self) {
-        // TODO
+        let Some(mut evt) = self.inbox.pop_back() else { return; };
+        let type_id = (*evt).type_id();
+        let Some(listeners) = self.root.listeners.get_mut(&type_id) else { return; };
+
+        for listener in listeners {
+            // Dereference Box<dyn Any> to get &mut dyn Any for listener's expected signature
+            // The listener will downcast this back to the concrete event type
+            listener(&mut *evt);
+        }
     }
 
+    /// Draws the runtime app on a mutable [`Frame`].
+    ///
+    /// This function reflects the current state produced by the most recent call to
+    /// [`Runtime::update`].
     pub fn draw(&mut self, frame: &mut Frame) {
-        let ctx = DrawContext {
+        self.root.draw(DrawContext {
             rect: frame.area(),
             buf: frame.buffer_mut(),
-        };
+        });
+    }
 
+    /// Returns if an event loop should exit immediately.
+    pub fn should_exit(&self) -> bool {
+        false
+    }
+}
+
+/// A compiled component item utilized by the runtime to define traversal.
+#[derive(Default)]
+pub struct Node {
+    draw: Option<DrawHandler>,
+    listeners: HashMap<TypeId, Vec<Listener>>,
+}
+
+impl Node {
+    /// Draws the component and its children.
+    fn draw(&mut self, ctx: DrawContext) {
         if let Some(draw) = &mut self.draw {
             draw(ctx);
         }
     }
+}
 
-    pub fn should_exit(&self) -> bool {
-        false
+impl From<Component> for Node {
+    fn from(value: Component) -> Self {
+        Self {
+            draw: value.draw,
+            listeners: value.listeners,
+        }
     }
 }
