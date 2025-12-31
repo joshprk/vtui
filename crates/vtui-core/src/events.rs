@@ -1,0 +1,23 @@
+use std::fmt::Debug;
+
+/// A marker trait for runtime signals.
+///
+/// An [`Event`] represents something that has already occurred, such as user input, a timer tick,
+/// or the completion of an asynchronous task. Events are produced by the runtime and consumed
+/// synchronously during the update phase.
+///
+/// Events carry no control flow and must not fail. All state transitions in response to an event
+/// occur inside registered listeners during a runtime update.
+pub trait Event: Clone + Debug {}
+
+/// A runtime event where some producer wishes to continue the flow of time.
+///
+/// These events are emitted upon request by the runtime to drive time-based updates such as
+/// animations, polling, or scheduled work.
+///
+/// The exact frequency and batching behavior are runtime-defined and may vary depending on
+/// configuration.
+#[derive(Clone, Debug)]
+pub struct Tick {}
+
+impl Event for Tick {}

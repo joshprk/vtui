@@ -1,8 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use ratatui::style::Style;
-use vtui::prelude::{Component, component};
-use vtui_core::Tick;
+use vtui::{
+    events::Tick,
+    prelude::{Component, component},
+};
 
 #[component]
 fn App(c: &mut Component) {

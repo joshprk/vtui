@@ -10,8 +10,10 @@ use crossterm::{
 use ratatui::{Terminal, prelude::CrosstermBackend};
 use vtui_core::{Component, LaunchConfig, Runtime};
 
+pub use vtui_core::events;
+
 pub mod prelude {
-    pub use vtui_core::{Component, Event};
+    pub use vtui_core::Component;
     pub use vtui_macros::component;
 }
 
