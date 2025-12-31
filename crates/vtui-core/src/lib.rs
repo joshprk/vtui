@@ -7,7 +7,10 @@ use std::{
 use ratatui::{Frame, buffer::Buffer, layout::Rect};
 
 type DrawHandler = Box<dyn FnMut(DrawContext)>;
-type Listener = Box<dyn FnMut(&mut dyn Any)>;
+// TODO: listener dispatch performs downcast per listener invocation
+// since listeners are already bucketed by TypeId, can be removed by storing Vec<Box<dyn FnMut(&E,
+// &Scope>> behind a single erased wrapper
+type Listener = Box<dyn FnMut(&dyn Any, &Scope)>;
 
 /// A marker trait for runtime signals.
 ///
@@ -43,11 +46,12 @@ pub struct Component {
 
 impl Component {
     /// Registers a listener for a specific [`Event`].
-    pub fn listen<E: Event + 'static>(&mut self, mut listener: impl FnMut(&mut E) + 'static) {
+    pub fn listen<E: Event + 'static>(&mut self, mut listener: impl FnMut(UpdateContext<E>) + 'static) {
         let type_id = TypeId::of::<E>();
-        let wrapped = Box::new(move |event: &mut dyn Any| {
-            if let Some(event) = event.downcast_mut::<E>() {
-                listener(event);
+        let wrapped = Box::new(move |event: &dyn Any, scope: &Scope| {
+            if let Some(event) = event.downcast_ref::<E>() {
+                let ctx = UpdateContext { event, scope };
+                listener(ctx);
             }
         });
 
@@ -74,6 +78,17 @@ pub struct DrawContext<'a> {
     pub rect: Rect,
     pub buf: &'a mut Buffer,
 }
+
+/// A context container given to all component update listeners.
+///
+/// It provides access to the triggering [`Event`] and its associated [`Scope`].
+pub struct UpdateContext<'a, E> {
+    pub event: &'a E,
+    pub scope: &'a Scope,
+}
+
+/// A handle identifying the current execution scope within the [`Runtime`].
+pub struct Scope;
 
 /// The execution engine for a `vtui` application.
 ///
@@ -105,6 +120,7 @@ pub struct DrawContext<'a> {
 pub struct Runtime {
     fps: Option<usize>,
     root: Node,
+    // TODO: move into a typed queue to eliminate heap allocation
     inbox: VecDeque<Box<dyn Any>>,
 }
 
@@ -124,9 +140,13 @@ impl Runtime {
     /// semantically observable. For such events, only the most recent state within an update cycle
     /// is guaranteed to be delivered.
     pub fn update(&mut self) {
-        let Some(mut evt) = self.inbox.pop_back() else {
+        // NOTE: TEMPORARY
+        self.inbox.push_front(Box::new(Tick {}));
+
+        let Some(evt) = self.inbox.pop_back() else {
             return;
         };
+
         let type_id = (*evt).type_id();
         let Some(listeners) = self.root.listeners.get_mut(&type_id) else {
             return;
@@ -135,7 +155,7 @@ impl Runtime {
         for listener in listeners {
             // Dereference Box<dyn Any> to get &mut dyn Any for listener's expected signature
             // The listener will downcast this back to the concrete event type
-            listener(&mut *evt);
+            listener(&*evt, &Scope);
         }
     }
 
