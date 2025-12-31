@@ -5,7 +5,7 @@ use std::{
 
 use ratatui::{Frame, buffer::Buffer, layout::Rect};
 
-use crate::events::{Event, Tick};
+use crate::events::Event;
 
 pub mod events;
 
@@ -104,18 +104,16 @@ pub struct Scope;
 pub struct Runtime {
     fps: Option<usize>,
     root: Node,
-    // TODO: move into a typed queue to eliminate heap allocation
-    inbox: VecDeque<Box<dyn Any>>,
+    inbox: EventSource,
 }
 
 impl Runtime {
     /// Creates a new [`Runtime`].
     pub fn new(root: Node, config: LaunchConfig) -> Self {
-        Self {
-            fps: config.fps,
-            root,
-            inbox: VecDeque::default(),
-        }
+        let fps = config.fps;
+        let inbox = EventSource::default();
+
+        Self { fps, root, inbox }
     }
 
     /// Yields to the runtime so that it may consume incoming events.
@@ -124,7 +122,7 @@ impl Runtime {
     /// semantically observable. For such events, only the most recent state within an update cycle
     /// is guaranteed to be delivered.
     pub fn update(&mut self) {
-        let Some(evt) = self.inbox.pop_back() else {
+        let Some(evt) = self.inbox.recv() else {
             return;
         };
 
@@ -154,6 +152,17 @@ impl Runtime {
     /// Returns if an event loop should exit immediately.
     pub fn should_exit(&self) -> bool {
         false
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct EventSource {
+    inbox: VecDeque<Box<dyn Any>>
+}
+
+impl EventSource {
+    fn recv(&mut self) -> Option<Box<dyn Any>> {
+        self.inbox.pop_back()
     }
 }
 
