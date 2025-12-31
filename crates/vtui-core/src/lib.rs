@@ -46,7 +46,10 @@ pub struct Component {
 
 impl Component {
     /// Registers a listener for a specific [`Event`].
-    pub fn listen<E: Event + 'static>(&mut self, mut listener: impl FnMut(UpdateContext<E>) + 'static) {
+    pub fn listen<E: Event + 'static>(
+        &mut self,
+        mut listener: impl FnMut(UpdateContext<E>) + 'static,
+    ) {
         let type_id = TypeId::of::<E>();
         let wrapped = Box::new(move |event: &dyn Any, scope: &Scope| {
             if let Some(event) = event.downcast_ref::<E>() {
@@ -178,7 +181,7 @@ impl Runtime {
 
 #[derive(Clone, Debug)]
 pub struct LaunchConfig {
-    fps: Option<usize>
+    fps: Option<usize>,
 }
 
 impl Default for LaunchConfig {
