@@ -20,7 +20,6 @@ fn App(c: &mut Component) {
     });
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> anyhow::Result<()> {
-    vtui::launch(App).await
+fn main() -> anyhow::Result<()> {
+    vtui::launch(App)
 }

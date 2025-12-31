@@ -21,7 +21,7 @@ pub mod prelude {
 ///
 /// The factory is invoked synchronously to register components, draw callbacks, listeners, and
 /// side effects. Once the runtime is built, registration is closed and execution begins.
-pub async fn launch(factory: fn(&mut Component)) -> anyhow::Result<()> {
+pub fn launch(factory: fn(&mut Component)) -> anyhow::Result<()> {
     let mut root = Component::default();
 
     factory(&mut root);
