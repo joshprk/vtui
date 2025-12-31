@@ -1,6 +1,6 @@
 use std::{
-    any::{Any, TypeId},
-    collections::{HashMap, VecDeque},
+    any::TypeId,
+    collections::HashMap, sync::{self, mpsc::{Receiver, Sender}},
 };
 
 use ratatui::{Frame, buffer::Buffer, layout::Rect};
@@ -13,7 +13,7 @@ type DrawHandler = Box<dyn FnMut(DrawContext)>;
 // TODO: listener dispatch performs downcast per listener invocation
 // since listeners are already bucketed by TypeId, can be removed by storing Vec<Box<dyn FnMut(&E,
 // &Scope>> behind a single erased wrapper
-type Listener = Box<dyn FnMut(&dyn Any, &Scope)>;
+type Listener = Box<dyn FnMut(&dyn Event, &Scope)>;
 
 /// A builder which declares the properties of a component.
 ///
@@ -27,16 +27,17 @@ pub struct Component {
 
 impl Component {
     /// Registers a listener for a specific [`Event`].
-    pub fn listen<E: Event + 'static>(
+    pub fn listen<E: Event>(
         &mut self,
         mut listener: impl FnMut(UpdateContext<E>) + 'static,
     ) {
         let type_id = TypeId::of::<E>();
-        let wrapped = Box::new(move |event: &dyn Any, scope: &Scope| {
-            if let Some(event) = event.downcast_ref::<E>() {
-                let ctx = UpdateContext { event, scope };
-                listener(ctx);
-            }
+        let wrapped = Box::new(move |event: &dyn Event, scope: &Scope| {
+            let event = event
+                .as_any()
+                .downcast_ref::<E>()
+                .expect("TypeId mismatch");
+            listener(UpdateContext { event, scope });
         });
 
         self.listeners.entry(type_id).or_default().push(wrapped);
@@ -111,7 +112,7 @@ impl Runtime {
     /// Creates a new [`Runtime`].
     pub fn new(root: Node, config: LaunchConfig) -> Self {
         let fps = config.fps;
-        let inbox = EventSource::default();
+        let inbox = EventSource::new();
 
         Self { fps, root, inbox }
     }
@@ -122,18 +123,15 @@ impl Runtime {
     /// semantically observable. For such events, only the most recent state within an update cycle
     /// is guaranteed to be delivered.
     pub fn update(&mut self) {
-        let Some(evt) = self.inbox.recv() else {
-            return;
-        };
-
+        let evt = self.inbox.recv();
         let type_id = (*evt).type_id();
+
         let Some(listeners) = self.root.listeners.get_mut(&type_id) else {
             return;
         };
 
         for listener in listeners {
-            // Dereference Box<dyn Any> to get &mut dyn Any for listener's expected signature
-            // The listener will downcast this back to the concrete event type
+            // Dereference Box<dyn Event> to get &dyn Event for listener's expected signature
             listener(&*evt, &Scope);
         }
     }
@@ -155,14 +153,27 @@ impl Runtime {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct EventSource {
-    inbox: VecDeque<Box<dyn Any>>
+    tx: Sender<Box<dyn Event>>,
+    rx: Receiver<Box<dyn Event>>,
+}
+
+impl Default for EventSource {
+    fn default() -> Self {
+        let (tx, rx) = sync::mpsc::channel::<Box<dyn Event>>();
+
+        Self { tx, rx }
+    }
 }
 
 impl EventSource {
-    fn recv(&mut self) -> Option<Box<dyn Any>> {
-        self.inbox.pop_back()
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn recv(&mut self) -> Box<dyn Event> {
+        self.rx.recv().unwrap()
     }
 }
 
