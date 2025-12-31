@@ -124,9 +124,6 @@ impl Runtime {
     /// semantically observable. For such events, only the most recent state within an update cycle
     /// is guaranteed to be delivered.
     pub fn update(&mut self) {
-        // NOTE: TEMPORARY
-        self.inbox.push_front(Box::new(Tick {}));
-
         let Some(evt) = self.inbox.pop_back() else {
             return;
         };
