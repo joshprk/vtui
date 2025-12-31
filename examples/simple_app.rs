@@ -6,17 +6,16 @@ use vtui_core::Tick;
 
 #[component]
 fn App(c: &mut Component) {
-    let text = Rc::new(RefCell::new(String::from("Hello world")));
+    let text = Rc::new(RefCell::new(1));
     let text_2 = text.clone();
 
     c.draw(move |ctx| {
-        let text = text.clone();
-        ctx.buf
-            .set_string(1, 1, text.borrow().as_str(), Style::default());
+        let displayed = format!("Counter: {}", text.borrow());
+        ctx.buf.set_string(1, 1, displayed, Style::default());
     });
 
-    c.listen::<Tick>(move |evt| {
-        *text_2.borrow_mut() = "Goodbye world".into();
+    c.listen::<Tick>(move |ctx| {
+        *text_2.borrow_mut() += 1;
     });
 }
 
