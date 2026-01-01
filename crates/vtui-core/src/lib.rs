@@ -1,11 +1,11 @@
-use std::{
-    any::TypeId,
-    collections::HashMap,
-};
+use std::{any::TypeId, collections::HashMap};
 
 use ratatui::{buffer::Buffer, layout::Rect};
 
-use crate::{events::Event, runtime::{Node, Scope}};
+use crate::{
+    events::Event,
+    runtime::{Node, Scope},
+};
 
 pub mod events;
 pub mod runtime;
