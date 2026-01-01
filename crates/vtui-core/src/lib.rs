@@ -11,7 +11,7 @@ pub mod events;
 pub mod runtime;
 pub mod source;
 
-type DrawHandler = Box<dyn FnMut(DrawContext)>;
+type DrawHandler = Box<dyn Fn(DrawContext)>;
 // TODO: listener dispatch performs downcast per listener invocation
 // since listeners are already bucketed by TypeId, can be removed by storing Vec<Box<dyn FnMut(&E,
 // &Scope>> behind a single erased wrapper
@@ -40,7 +40,7 @@ impl Component {
     }
 
     /// Registers a draw handler that specifies how this component is rendered.
-    pub fn draw(&mut self, listener: impl FnMut(DrawContext) + 'static) {
+    pub fn draw(&mut self, listener: impl Fn(DrawContext) + 'static) {
         self.draw = Some(Box::new(listener));
     }
 
