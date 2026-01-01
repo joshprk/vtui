@@ -13,6 +13,10 @@ use std::{any::Any, fmt::Debug};
 /// considered idiomatic.
 pub trait Event: AsAny + Debug + Send + Sync {}
 
+pub enum Message {
+    Tick(Tick),
+}
+
 /// A trait which implements a function `as_any` for all objects implementing [`Any`] and
 /// [`Event`].
 ///

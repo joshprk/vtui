@@ -1,13 +1,11 @@
-use std::{any::TypeId, collections::HashMap};
-
 use ratatui::{buffer::Buffer, layout::Rect};
 
 use crate::{
-    events::Event,
-    runtime::{Node, Scope},
+    events::Event, listeners::ListenerStore, runtime::{Node, Scope}
 };
 
 pub mod events;
+pub mod listeners;
 pub mod runtime;
 pub mod source;
 
@@ -15,7 +13,6 @@ type DrawHandler = Box<dyn Fn(DrawContext)>;
 // TODO: listener dispatch performs downcast per listener invocation
 // since listeners are already bucketed by TypeId, can be removed by storing Vec<Box<dyn FnMut(&E,
 // &Scope>> behind a single erased wrapper
-type Listener = Box<dyn FnMut(&dyn Event, &Scope)>;
 
 /// A builder which declares the properties of a component.
 ///
@@ -24,19 +21,13 @@ type Listener = Box<dyn FnMut(&dyn Event, &Scope)>;
 #[derive(Default)]
 pub struct Component {
     draw: Option<DrawHandler>,
-    listeners: HashMap<TypeId, Vec<Listener>>,
+    listeners: ListenerStore,
 }
 
 impl Component {
     /// Registers a listener for a specific [`Event`].
-    pub fn listen<E: Event>(&mut self, mut listener: impl FnMut(UpdateContext<E>) + 'static) {
-        let type_id = TypeId::of::<E>();
-        let wrapped = Box::new(move |event: &dyn Event, scope: &Scope| {
-            let event = event.as_any().downcast_ref::<E>().expect("TypeId mismatch");
-            listener(UpdateContext { event, scope });
-        });
-
-        self.listeners.entry(type_id).or_default().push(wrapped);
+    pub fn listen<E: Event>(&mut self, listener: impl FnMut(&UpdateContext<E>) + 'static) {
+        self.listeners.push(Box::new(listener));
     }
 
     /// Registers a draw handler that specifies how this component is rendered.
