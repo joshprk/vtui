@@ -3,11 +3,11 @@ use std::{cell::RefCell, rc::Rc};
 use ratatui::style::Style;
 use vtui::{
     events::Tick,
-    prelude::{Component, component},
+    prelude::*,
 };
 
 #[component]
-fn App(c: &mut Component) {
+fn App(c: &mut Component) -> Inner {
     let text = Rc::new(RefCell::new(1));
     let text_2 = text.clone();
 
@@ -19,6 +19,8 @@ fn App(c: &mut Component) {
     c.listen::<Tick>(move |ctx| {
         *text_2.borrow_mut() += 1;
     });
+
+    Inner::default()
 }
 
 fn main() -> anyhow::Result<()> {

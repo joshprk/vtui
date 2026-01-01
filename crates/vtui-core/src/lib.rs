@@ -51,6 +51,12 @@ impl Component {
     }
 }
 
+/// Describes the children of a component, including their layout and runtime behavior.
+///
+/// This is currently a work-in-progress until children functionality is completed.
+#[derive(Default)]
+pub struct Inner {}
+
 /// A context container given to all component draw handlers.
 ///
 /// This currently only contains the basic [`Rect`] and [`Buffer`] objects, but exists to support
