@@ -45,7 +45,7 @@ impl Runtime {
     pub fn update(&mut self, event: Box<dyn Event>) {
         let type_id = (*event).type_id();
 
-        let Some(listeners) = self.root.listeners.get_mut(&type_id) else {
+        let Some(listeners) = self.root.inner.listeners.get_mut(&type_id) else {
             return;
         };
 
@@ -78,14 +78,13 @@ pub struct Scope;
 /// A compiled component item utilized by the runtime to define traversal.
 #[derive(Default)]
 pub struct Node {
-    draw: Option<DrawHandler>,
-    listeners: HashMap<TypeId, Vec<Listener>>,
+    inner: Component,
 }
 
 impl Node {
     /// Draws the component and its children.
     fn draw(&mut self, ctx: DrawContext) {
-        if let Some(draw) = &mut self.draw {
+        if let Some(draw) = &mut self.inner.draw {
             draw(ctx);
         }
     }
@@ -93,9 +92,6 @@ impl Node {
 
 impl From<Component> for Node {
     fn from(value: Component) -> Self {
-        Self {
-            draw: value.draw,
-            listeners: value.listeners,
-        }
+        Self { inner: value }
     }
 }
