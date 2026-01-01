@@ -8,7 +8,7 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
-use vtui_core::{Component, EventSource, Runtime};
+use vtui_core::{Component, runtime::Runtime, source::EventSource};
 
 pub use vtui_core::events;
 
