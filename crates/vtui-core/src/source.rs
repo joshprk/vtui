@@ -1,7 +1,8 @@
 use std::sync::mpsc::{Receiver, RecvError, Sender};
 
-use crate::events::Event;
+use crate::{events::Event, runtime::Runtime};
 
+/// A synchronous event producer whose events can be fed to a [`Runtime`].
 #[derive(Debug)]
 pub struct EventSource {
     tx: Sender<Box<dyn Event>>,
