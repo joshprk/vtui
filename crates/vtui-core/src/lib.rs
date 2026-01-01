@@ -44,7 +44,7 @@ impl Component {
         self.draw = Some(Box::new(listener));
     }
 
-    /// Builds the [`Component`] into a [`Runtime`], which can be used at runtime to perform the
+    /// Builds the [`Component`] into a [`Node`], which can be used at runtime to perform the
     /// declared behavior of this [`Component`].
     pub fn build(self) -> Node {
         Node::from(self)
