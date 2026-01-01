@@ -1,11 +1,15 @@
 use std::{
-    any::{Any, TypeId},
-    collections::{HashMap, VecDeque},
+    any::TypeId,
+    collections::HashMap,
+    sync::{
+        self,
+        mpsc::{Receiver, RecvError, Sender},
+    },
 };
 
 use ratatui::{Frame, buffer::Buffer, layout::Rect};
 
-use crate::events::{Event, Tick};
+use crate::events::Event;
 
 pub mod events;
 
@@ -13,7 +17,7 @@ type DrawHandler = Box<dyn FnMut(DrawContext)>;
 // TODO: listener dispatch performs downcast per listener invocation
 // since listeners are already bucketed by TypeId, can be removed by storing Vec<Box<dyn FnMut(&E,
 // &Scope>> behind a single erased wrapper
-type Listener = Box<dyn FnMut(&dyn Any, &Scope)>;
+type Listener = Box<dyn FnMut(&dyn Event, &Scope)>;
 
 /// A builder which declares the properties of a component.
 ///
@@ -27,16 +31,11 @@ pub struct Component {
 
 impl Component {
     /// Registers a listener for a specific [`Event`].
-    pub fn listen<E: Event + 'static>(
-        &mut self,
-        mut listener: impl FnMut(UpdateContext<E>) + 'static,
-    ) {
+    pub fn listen<E: Event>(&mut self, mut listener: impl FnMut(UpdateContext<E>) + 'static) {
         let type_id = TypeId::of::<E>();
-        let wrapped = Box::new(move |event: &dyn Any, scope: &Scope| {
-            if let Some(event) = event.downcast_ref::<E>() {
-                let ctx = UpdateContext { event, scope };
-                listener(ctx);
-            }
+        let wrapped = Box::new(move |event: &dyn Event, scope: &Scope| {
+            let event = event.as_any().downcast_ref::<E>().expect("TypeId mismatch");
+            listener(UpdateContext { event, scope });
         });
 
         self.listeners.entry(type_id).or_default().push(wrapped);
@@ -102,41 +101,26 @@ pub struct Scope;
 /// deterministically on one thread.
 #[derive(Default)]
 pub struct Runtime {
-    fps: Option<usize>,
     root: Node,
-    // TODO: move into a typed queue to eliminate heap allocation
-    inbox: VecDeque<Box<dyn Any>>,
 }
 
 impl Runtime {
     /// Creates a new [`Runtime`].
-    pub fn new(root: Node, config: LaunchConfig) -> Self {
-        Self {
-            fps: config.fps,
-            root,
-            inbox: VecDeque::default(),
-        }
+    pub fn new(root: Node) -> Self {
+        Self { root }
     }
 
-    /// Yields to the runtime so that it may consume incoming events.
-    ///
-    /// The runtime may choose to batch, drop, or coalesce events whose intermediate states are not
-    /// semantically observable. For such events, only the most recent state within an update cycle
-    /// is guaranteed to be delivered.
-    pub fn update(&mut self) {
-        let Some(evt) = self.inbox.pop_back() else {
-            return;
-        };
+    /// Advances the state, observing [`Event`] as the most recent occurrence.
+    pub fn update(&mut self, event: Box<dyn Event>) {
+        let type_id = (*event).type_id();
 
-        let type_id = (*evt).type_id();
         let Some(listeners) = self.root.listeners.get_mut(&type_id) else {
             return;
         };
 
         for listener in listeners {
-            // Dereference Box<dyn Any> to get &mut dyn Any for listener's expected signature
-            // The listener will downcast this back to the concrete event type
-            listener(&*evt, &Scope);
+            // Dereference Box<dyn Event> to get &dyn Event for listener's expected signature
+            listener(&*event, &Scope);
         }
     }
 
@@ -157,14 +141,26 @@ impl Runtime {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct LaunchConfig {
-    fps: Option<usize>,
+#[derive(Debug)]
+pub struct EventSource {
+    tx: Sender<Box<dyn Event>>,
+    rx: Receiver<Box<dyn Event>>,
 }
 
-impl Default for LaunchConfig {
+impl Default for EventSource {
     fn default() -> Self {
-        Self { fps: Some(60) }
+        let (tx, rx) = sync::mpsc::channel::<Box<dyn Event>>();
+        Self { tx, rx }
+    }
+}
+
+impl EventSource {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn recv(&mut self) -> Result<Box<dyn Event>, RecvError> {
+        self.rx.recv()
     }
 }
 
