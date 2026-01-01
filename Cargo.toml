@@ -11,7 +11,7 @@ license = "MIT"
 
 [dependencies]
 anyhow = "1.0.100"
-crossterm = { version = "0.29.0", features = ["event-stream"] }
+crossterm = "0.29.0"
 ratatui = "0.30.0"
 vtui-core = { version = "0.1.0-alpha", path = "crates/vtui-core" }
 vtui-macros = { version = "0.1.0-alpha", path = "crates/vtui-macros" }

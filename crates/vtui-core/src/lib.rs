@@ -1,6 +1,10 @@
 use std::{
     any::TypeId,
-    collections::HashMap, sync::{self, mpsc::{Receiver, Sender}},
+    collections::HashMap,
+    sync::{
+        self,
+        mpsc::{Receiver, RecvError, Sender},
+    },
 };
 
 use ratatui::{Frame, buffer::Buffer, layout::Rect};
@@ -27,16 +31,10 @@ pub struct Component {
 
 impl Component {
     /// Registers a listener for a specific [`Event`].
-    pub fn listen<E: Event>(
-        &mut self,
-        mut listener: impl FnMut(UpdateContext<E>) + 'static,
-    ) {
+    pub fn listen<E: Event>(&mut self, mut listener: impl FnMut(UpdateContext<E>) + 'static) {
         let type_id = TypeId::of::<E>();
         let wrapped = Box::new(move |event: &dyn Event, scope: &Scope| {
-            let event = event
-                .as_any()
-                .downcast_ref::<E>()
-                .expect("TypeId mismatch");
+            let event = event.as_any().downcast_ref::<E>().expect("TypeId mismatch");
             listener(UpdateContext { event, scope });
         });
 
@@ -103,28 +101,18 @@ pub struct Scope;
 /// deterministically on one thread.
 #[derive(Default)]
 pub struct Runtime {
-    fps: Option<usize>,
     root: Node,
-    inbox: EventSource,
 }
 
 impl Runtime {
     /// Creates a new [`Runtime`].
-    pub fn new(root: Node, config: LaunchConfig) -> Self {
-        let fps = config.fps;
-        let inbox = EventSource::new();
-
-        Self { fps, root, inbox }
+    pub fn new(root: Node) -> Self {
+        Self { root }
     }
 
-    /// Yields to the runtime so that it may consume incoming events.
-    ///
-    /// The runtime may choose to batch, drop, or coalesce events whose intermediate states are not
-    /// semantically observable. For such events, only the most recent state within an update cycle
-    /// is guaranteed to be delivered.
-    pub fn update(&mut self) {
-        let evt = self.inbox.recv();
-        let type_id = (*evt).type_id();
+    /// Advances the state, observing [`Event`] as the most recent occurrence.
+    pub fn update(&mut self, event: Box<dyn Event>) {
+        let type_id = (*event).type_id();
 
         let Some(listeners) = self.root.listeners.get_mut(&type_id) else {
             return;
@@ -132,7 +120,7 @@ impl Runtime {
 
         for listener in listeners {
             // Dereference Box<dyn Event> to get &dyn Event for listener's expected signature
-            listener(&*evt, &Scope);
+            listener(&*event, &Scope);
         }
     }
 
@@ -162,7 +150,6 @@ pub struct EventSource {
 impl Default for EventSource {
     fn default() -> Self {
         let (tx, rx) = sync::mpsc::channel::<Box<dyn Event>>();
-
         Self { tx, rx }
     }
 }
@@ -172,19 +159,8 @@ impl EventSource {
         Self::default()
     }
 
-    pub fn recv(&mut self) -> Box<dyn Event> {
-        self.rx.recv().unwrap()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct LaunchConfig {
-    fps: Option<usize>,
-}
-
-impl Default for LaunchConfig {
-    fn default() -> Self {
-        Self { fps: Some(60) }
+    pub fn recv(&mut self) -> Result<Box<dyn Event>, RecvError> {
+        self.rx.recv()
     }
 }
 

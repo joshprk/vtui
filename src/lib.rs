@@ -8,7 +8,7 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
-use vtui_core::{Component, LaunchConfig, Runtime};
+use vtui_core::{Component, EventSource, Runtime};
 
 pub use vtui_core::events;
 
@@ -23,11 +23,11 @@ pub mod prelude {
 /// side effects. Once the runtime is built, registration is closed and execution begins.
 pub fn launch(factory: fn(&mut Component)) -> anyhow::Result<()> {
     let mut root = Component::default();
-    let config = LaunchConfig::default();
 
     factory(&mut root);
 
-    let mut runtime = Runtime::new(root.build(), config);
+    let mut source = EventSource::default();
+    let mut runtime = Runtime::new(root.build());
 
     crossterm::terminal::enable_raw_mode()?;
     crossterm::execute!(
@@ -47,7 +47,7 @@ pub fn launch(factory: fn(&mut Component)) -> anyhow::Result<()> {
             runtime.draw(f);
         })?;
 
-        runtime.update();
+        runtime.update(source.recv().unwrap());
 
         if runtime.should_exit() {
             break;

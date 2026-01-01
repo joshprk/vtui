@@ -34,7 +34,7 @@ impl<T: Any + Event> AsAny for T {
 ///
 /// The exact frequency and batching behavior are runtime-defined and may vary depending on
 /// configuration.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Tick {}
 
 impl Event for Tick {}
