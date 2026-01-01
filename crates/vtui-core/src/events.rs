@@ -38,3 +38,16 @@ impl<T: Any + Event> AsAny for T {
 pub struct Tick {}
 
 impl Event for Tick {}
+
+#[derive(Debug)]
+pub struct MouseDown(pub crate::input::MouseInput);
+
+impl std::ops::Deref for MouseDown {
+    type Target = crate::input::MouseInput;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Event for MouseDown {}

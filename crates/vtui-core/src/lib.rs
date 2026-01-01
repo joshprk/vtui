@@ -8,6 +8,7 @@ use crate::{
 };
 
 pub mod events;
+pub mod input;
 pub mod runtime;
 pub mod source;
 
