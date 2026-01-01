@@ -5,8 +5,8 @@ use syn::{ItemFn, Signature, parse_macro_input};
 fn is_mut_component_ref(ty: &syn::Type) -> bool {
     match ty {
         syn::Type::Reference(r) => {
-            r.mutability.is_some() &&
-            matches!(&*r.elem, syn::Type::Path(p) if p.path.is_ident("Component"))
+            r.mutability.is_some()
+                && matches!(&*r.elem, syn::Type::Path(p) if p.path.is_ident("Component"))
         }
         _ => false,
     }
