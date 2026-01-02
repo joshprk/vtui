@@ -3,10 +3,8 @@ use std::any::{Any, TypeId};
 pub trait Event: AsAny {}
 
 pub struct Tick {}
-pub struct Tock {}
 
 impl Event for Tick {}
-impl Event for Tock {}
 
 pub struct Message {
     pub type_id: TypeId,
