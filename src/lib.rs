@@ -1,8 +1,6 @@
 pub use vtui_core::events;
 pub use vtui_core::runtime;
 
-pub mod drivers;
-
 pub mod prelude {
     pub use vtui_core::{driver::Driver, component::Component};
     pub use vtui_macros::component;
