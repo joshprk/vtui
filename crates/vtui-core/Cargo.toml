@@ -6,4 +6,4 @@ description = "A simple event-driven terminal UI framework"
 license = "MIT"
 
 [dependencies]
-ratatui = "0.30.0"
+ratatui = { version = "0.30.0", default-features = false }
