@@ -3,6 +3,8 @@ pub use vtui_core::runtime;
 
 pub use crate::launch::launch;
 
+pub mod drivers;
+
 mod launch;
 
 pub mod prelude {
