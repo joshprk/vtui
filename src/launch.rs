@@ -1,7 +1,11 @@
 use std::io;
 
 use thiserror::Error;
-use vtui_core::{component::Component, driver::Driver, runtime::{EventSource, Runtime}};
+use vtui_core::{
+    component::Component,
+    driver::Driver,
+    runtime::{EventSource, Runtime},
+};
 
 use crate::drivers::CrosstermDriver;
 

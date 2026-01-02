@@ -1,7 +1,13 @@
 use std::io::{self, Write};
 
-use crossterm::{event::{DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste, EnableFocusChange, EnableMouseCapture}, terminal::{EnterAlternateScreen, LeaveAlternateScreen}};
-use ratatui::{Terminal, prelude::{CrosstermBackend}};
+use crossterm::{
+    event::{
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+        EnableFocusChange, EnableMouseCapture,
+    },
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::{Terminal, prelude::CrosstermBackend};
 use vtui_core::driver::Driver;
 
 pub struct CrosstermDriver<W: Write> {
