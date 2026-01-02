@@ -10,6 +10,6 @@ fn App(c: &mut Component) {
     });
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     vtui::launch(App)
 }
