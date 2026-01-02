@@ -58,11 +58,9 @@ impl<E: Event> ListenerBucket<E> {
 
 impl<E: Event> ErasedListenerBucket for ListenerBucket<E> {
     fn dispatch(&mut self, msg: &Message) {
-        let event = msg
-            .event
-            .as_any()
+        let event = msg.event
             .downcast_ref::<E>()
-            .expect("event was not of right type");
+            .expect("TypeId mismatch");
 
         let ctx = UpdateContext { event };
 
