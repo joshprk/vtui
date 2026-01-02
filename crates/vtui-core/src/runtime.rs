@@ -52,3 +52,34 @@ impl EventSource {
         self.rx.recv().ok()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{any::Any, cell::RefCell, rc::Rc};
+
+    use crate::{component::Component, events::{Message, Tick}, runtime::Runtime};
+
+    #[test]
+    fn test_event_listen() {
+        let mut root = Component::default();
+        let state = Rc::new(RefCell::new(false));
+        let state_c = state.clone();
+
+        root.listen::<Tick>(move |_| {
+            *state_c.borrow_mut() = true;
+        });
+
+        let mut runtime = Runtime::new(root);
+        let event = Tick { };
+        let message = Message {
+            type_id: event.type_id(),
+            event: Box::new(event),
+        };
+
+        assert!(!*state.borrow());
+
+        runtime.update(message);
+
+        assert!(*state.borrow());
+    }
+}
