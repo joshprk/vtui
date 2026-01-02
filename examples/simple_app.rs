@@ -11,5 +11,5 @@ fn App(c: &mut Component) {
 }
 
 fn main() {
-    vtui::launch(App)
+    vtui::launch(App);
 }
