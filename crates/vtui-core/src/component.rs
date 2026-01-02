@@ -3,14 +3,15 @@ use crate::{
     listeners::{DrawContext, DrawListener, ListenerStore, UpdateContext},
 };
 
+#[derive(Default)]
 pub struct Component {
-    draw_listener: DrawListener,
+    draw_listener: Option<DrawListener>,
     listeners: ListenerStore,
 }
 
 impl Component {
     pub fn draw(&mut self, listener: impl Fn(&DrawContext) + 'static) {
-        self.draw_listener = Box::new(listener);
+        self.draw_listener = Some(Box::new(listener));
     }
 
     pub fn listen<E: Event>(&mut self, listener: impl FnMut(&UpdateContext<E>) + 'static) {
@@ -18,7 +19,9 @@ impl Component {
     }
 
     pub(crate) fn render(&self, ctx: &DrawContext) {
-        (self.draw_listener)(ctx)
+        if let Some(ref draw_listener) = self.draw_listener {
+            draw_listener(ctx)
+        }
     }
 
     pub(crate) fn update(&mut self, msg: &Message) {
