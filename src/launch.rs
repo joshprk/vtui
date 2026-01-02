@@ -38,8 +38,8 @@ impl LaunchBuilder {
                 runtime.draw(f);
             })?;
 
-            // TODO: remove unwrap
-            runtime.update(source.recv().unwrap());
+            let event = source.recv();
+            runtime.update(event);
 
             if runtime.should_exit() {
                 break;

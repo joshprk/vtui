@@ -48,8 +48,8 @@ impl EventSource {
         Self::default()
     }
 
-    pub fn recv(&self) -> Option<Message> {
-        self.rx.recv().ok()
+    pub fn recv(&self) -> Message {
+        self.rx.recv().unwrap()
     }
 }
 
