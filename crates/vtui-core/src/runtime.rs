@@ -25,6 +25,10 @@ impl Runtime {
     pub fn update(&mut self, msg: Message) {
         self.root.update(&msg)
     }
+
+    pub fn should_exit(&self) -> bool {
+        false
+    }
 }
 
 pub struct EventSource {
