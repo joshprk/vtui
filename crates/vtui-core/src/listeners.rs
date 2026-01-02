@@ -7,7 +7,7 @@ use ratatui::{buffer::Buffer, layout::Rect};
 
 use crate::events::{Event, Message};
 
-pub(crate) type DrawListener = Box<dyn Fn(&DrawContext)>;
+pub(crate) type DrawListener = Box<dyn Fn(&mut DrawContext)>;
 pub(crate) type Listener<E> = Box<dyn FnMut(&UpdateContext<E>)>;
 
 pub(crate) trait ErasedListenerBucket {

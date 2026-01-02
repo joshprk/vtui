@@ -14,12 +14,12 @@ impl Runtime {
     }
 
     pub fn draw(&self, frame: &mut Frame) {
-        let ctx = DrawContext {
+        let mut ctx = DrawContext {
             rect: frame.area(),
             buf: frame.buffer_mut(),
         };
 
-        self.root.render(&ctx)
+        self.root.render(&mut ctx)
     }
 
     pub fn update(&mut self, msg: Message) {

@@ -10,7 +10,7 @@ pub struct Component {
 }
 
 impl Component {
-    pub fn draw(&mut self, listener: impl Fn(&DrawContext) + 'static) {
+    pub fn draw(&mut self, listener: impl Fn(&mut DrawContext) + 'static) {
         self.draw_listener = Some(Box::new(listener));
     }
 
@@ -18,7 +18,7 @@ impl Component {
         self.listeners.push(Box::new(listener))
     }
 
-    pub(crate) fn render(&self, ctx: &DrawContext) {
+    pub(crate) fn render(&self, ctx: &mut DrawContext) {
         if let Some(ref draw_listener) = self.draw_listener {
             draw_listener(ctx)
         }
