@@ -8,12 +8,13 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
-use vtui_core::{Component, Inner, runtime::Runtime, source::EventSource};
+use vtui_core::{component::Component, runtime::{EventSource, Runtime}};
 
 pub use vtui_core::events;
+pub use vtui_core::runtime;
 
 pub mod prelude {
-    pub use vtui_core::{Component, Inner};
+    pub use vtui_core::component::Component;
     pub use vtui_macros::component;
 }
 
@@ -21,13 +22,13 @@ pub mod prelude {
 ///
 /// The factory is invoked synchronously to register components, draw callbacks, listeners, and
 /// side effects. Once the runtime is built, registration is closed and execution begins.
-pub fn launch(factory: fn(&mut Component) -> Inner) -> anyhow::Result<()> {
+pub fn launch(factory: fn(&mut Component)) -> anyhow::Result<()> {
     let mut root = Component::default();
 
     factory(&mut root);
 
-    let mut source = EventSource::default();
-    let mut runtime = Runtime::new(root.build());
+    let source = EventSource::default();
+    let mut runtime = Runtime::new(root);
 
     crossterm::terminal::enable_raw_mode()?;
     crossterm::execute!(
