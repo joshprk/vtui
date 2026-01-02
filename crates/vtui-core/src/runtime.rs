@@ -57,7 +57,11 @@ impl EventSource {
 mod tests {
     use std::{any::Any, cell::RefCell, rc::Rc};
 
-    use crate::{component::Component, events::{Message, Tick}, runtime::Runtime};
+    use crate::{
+        component::Component,
+        events::{Message, Tick},
+        runtime::Runtime,
+    };
 
     #[test]
     fn test_event_listen() {
@@ -70,7 +74,7 @@ mod tests {
         });
 
         let mut runtime = Runtime::new(root);
-        let event = Tick { };
+        let event = Tick {};
         let message = Message {
             type_id: event.type_id(),
             event: Box::new(event),
