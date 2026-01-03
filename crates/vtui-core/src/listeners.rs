@@ -59,7 +59,6 @@ impl<E: Event> ListenerBucket<E> {
 impl<E: Event> ErasedListenerBucket for ListenerBucket<E> {
     fn dispatch(&mut self, msg: &Message) {
         let event = msg.event.downcast_ref::<E>().expect("TypeId mismatch");
-
         let ctx = UpdateContext { event };
 
         for listener in &mut self.inner {
