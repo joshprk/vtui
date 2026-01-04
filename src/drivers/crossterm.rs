@@ -1,4 +1,7 @@
-use std::io::{self, Write};
+use std::{
+    io::{self, Write},
+    sync::mpsc::Sender,
+};
 
 use crossterm::{
     event::{
@@ -8,7 +11,11 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
-use vtui_core::driver::Driver;
+use vtui_core::{
+    driver::Driver,
+    events::{Message, Tick},
+    runtime::EventProducer,
+};
 
 pub struct CrosstermDriver<W: Write> {
     pub terminal: Terminal<CrosstermBackend<W>>,
@@ -51,5 +58,16 @@ impl<W: Write> Driver for CrosstermDriver<W> {
 
     fn terminal(&mut self) -> &mut Terminal<Self::Backend> {
         &mut self.terminal
+    }
+}
+
+impl<W: Write> EventProducer for CrosstermDriver<W> {
+    fn subscribe(tx: Sender<Message>) {
+        loop {
+            let crossterm_event = crossterm::event::read().unwrap();
+            let event = Tick {};
+            let message = Message::new(event);
+            let _ = tx.send(message);
+        }
     }
 }

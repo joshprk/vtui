@@ -51,6 +51,20 @@ impl EventSource {
     pub fn recv(&self) -> Message {
         self.rx.recv().unwrap()
     }
+
+    pub fn subscribe(&self, producer: &impl EventProducer) {
+        producer.spawn(self.tx.clone());
+    }
+}
+
+pub trait EventProducer {
+    fn subscribe(tx: Sender<Message>);
+
+    fn spawn(&self, tx: Sender<Message>) {
+        std::thread::spawn(move || {
+            Self::subscribe(tx);
+        });
+    }
 }
 
 #[cfg(test)]
