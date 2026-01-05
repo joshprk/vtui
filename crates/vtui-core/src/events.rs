@@ -4,6 +4,19 @@ use crate::input::MouseButton;
 
 pub trait Event: Send + 'static {}
 
+pub struct Message {
+    pub type_id: TypeId,
+    pub event: Box<dyn Any + Send>,
+}
+
+impl Message {
+    pub fn new(event: impl Event) -> Self {
+        let type_id = event.type_id();
+        let event = Box::new(event);
+        Self { type_id, event }
+    }
+}
+
 pub struct Tick {}
 
 impl Event for Tick {}
@@ -23,16 +36,3 @@ pub struct MouseUp {
 }
 
 impl Event for MouseUp {}
-
-pub struct Message {
-    pub type_id: TypeId,
-    pub event: Box<dyn Any + Send>,
-}
-
-impl Message {
-    pub fn new(event: impl Event) -> Self {
-        let type_id = event.type_id();
-        let event = Box::new(event);
-        Self { type_id, event }
-    }
-}
