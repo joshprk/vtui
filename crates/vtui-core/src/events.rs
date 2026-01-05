@@ -1,6 +1,6 @@
 use std::any::{Any, TypeId};
 
-use crate::input::{MouseButton, MouseScrollDirection};
+use crate::input::{KeyCode, MouseButton, MouseScrollDirection};
 
 pub trait Event: Send + 'static {}
 
@@ -59,3 +59,21 @@ pub struct MouseScroll {
 }
 
 impl Event for MouseScroll {}
+
+pub struct KeyPress {
+    pub key: KeyCode,
+}
+
+impl Event for KeyPress {}
+
+pub struct KeyRepeat {
+    pub key: KeyCode,
+}
+
+impl Event for KeyRepeat {}
+
+pub struct KeyRelease {
+    pub key: KeyCode,
+}
+
+impl Event for KeyRelease {}

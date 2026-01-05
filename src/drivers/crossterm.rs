@@ -5,9 +5,7 @@ use std::{
 
 use crossterm::{
     event::{
-        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
-        MouseButton as CrosstermMouseButton, MouseEvent as CrosstermMouseEvent, MouseEventKind,
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste, EnableFocusChange, EnableMouseCapture, MouseEventKind
     },
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -15,7 +13,7 @@ use ratatui::{Terminal, prelude::CrosstermBackend};
 use vtui_core::{
     driver::Driver,
     events::Message,
-    input::{Input, MouseButton, MouseScrollDirection},
+    input::{Input, KeyCode, MediaKeyCode, ModifierKeyCode, ModifierKeyDirection, MouseButton, MouseScrollDirection},
     runtime::EventProducer,
 };
 
@@ -75,12 +73,20 @@ impl<W: Write> EventProducer for CrosstermDriver<W> {
     }
 }
 
-fn normalize_mouse_event(mouse_event: CrosstermMouseEvent) -> Option<Input> {
-    fn normalize_button(button: CrosstermMouseButton) -> MouseButton {
+fn normalize_input(event: crossterm::event::Event) -> Option<Input> {
+    match event {
+        crossterm::event::Event::Mouse(mouse_event) => normalize_mouse_event(mouse_event),
+        crossterm::event::Event::Key(key_event) => normalize_key_event(key_event),
+        _ => None,
+    }
+}
+
+fn normalize_mouse_event(mouse_event: crossterm::event::MouseEvent) -> Option<Input> {
+    fn normalize_button(button: crossterm::event::MouseButton) -> MouseButton {
         match button {
-            CrosstermMouseButton::Left => MouseButton::Left,
-            CrosstermMouseButton::Right => MouseButton::Right,
-            CrosstermMouseButton::Middle => MouseButton::Middle,
+            crossterm::event::MouseButton::Left => MouseButton::Left,
+            crossterm::event::MouseButton::Right => MouseButton::Right,
+            crossterm::event::MouseButton::Middle => MouseButton::Middle,
         }
     }
 
@@ -121,13 +127,97 @@ fn normalize_mouse_event(mouse_event: CrosstermMouseEvent) -> Option<Input> {
             y,
             direction: MouseScrollDirection::Right,
         }),
-        _ => None,
     }
 }
 
-fn normalize_input(event: CrosstermEvent) -> Option<Input> {
-    match event {
-        CrosstermEvent::Mouse(mouse_event) => normalize_mouse_event(mouse_event),
-        _ => None,
+fn normalize_key_event(key_event: crossterm::event::KeyEvent) -> Option<Input> {
+    fn normalize_keycode(key_code: crossterm::event::KeyCode) -> Option<KeyCode> {
+        match key_code {
+            crossterm::event::KeyCode::Backspace => Some(KeyCode::Backspace),
+            crossterm::event::KeyCode::Enter => Some(KeyCode::Enter),
+            crossterm::event::KeyCode::Left => Some(KeyCode::Left),
+            crossterm::event::KeyCode::Right => Some(KeyCode::Right),
+            crossterm::event::KeyCode::Up => Some(KeyCode::Up),
+            crossterm::event::KeyCode::Down => Some(KeyCode::Down),
+            crossterm::event::KeyCode::Home => Some(KeyCode::Home),
+            crossterm::event::KeyCode::End => Some(KeyCode::End),
+            crossterm::event::KeyCode::PageUp => Some(KeyCode::PageUp),
+            crossterm::event::KeyCode::PageDown => Some(KeyCode::PageDown),
+            crossterm::event::KeyCode::Tab => Some(KeyCode::Tab),
+            crossterm::event::KeyCode::BackTab => Some(KeyCode::Tab),
+            crossterm::event::KeyCode::Delete => Some(KeyCode::Delete),
+            crossterm::event::KeyCode::Insert => Some(KeyCode::Insert),
+            crossterm::event::KeyCode::F(n) => Some(KeyCode::F(n)),
+            crossterm::event::KeyCode::Char(c) => Some(KeyCode::Char(c)),
+            crossterm::event::KeyCode::Esc => Some(KeyCode::Esc),
+            crossterm::event::KeyCode::CapsLock => Some(KeyCode::CapsLock),
+            crossterm::event::KeyCode::ScrollLock => Some(KeyCode::ScrollLock),
+            crossterm::event::KeyCode::NumLock => Some(KeyCode::NumLock),
+            crossterm::event::KeyCode::PrintScreen => Some(KeyCode::PrintScreen),
+            crossterm::event::KeyCode::Pause => Some(KeyCode::Pause),
+            crossterm::event::KeyCode::Menu => Some(KeyCode::Menu),
+            crossterm::event::KeyCode::KeypadBegin => Some(KeyCode::KeypadBegin),
+            crossterm::event::KeyCode::Media(key) => {
+                let key = normalize_media_key(key);
+                Some(KeyCode::Media(key))
+            },
+            crossterm::event::KeyCode::Modifier(key) => {
+                let (key, direction) = normalize_modifier_key(key);
+                Some(KeyCode::Modifier(key, direction))
+            },
+            crossterm::event::KeyCode::Null => None,
+        }
+    }
+
+    let key = normalize_keycode(key_event.code)?;
+
+    match key_event.kind {
+        crossterm::event::KeyEventKind::Press => Some(Input::KeyPress { key }),
+        crossterm::event::KeyEventKind::Repeat => Some(Input::KeyRepeat { key }),
+        crossterm::event::KeyEventKind::Release => Some(Input::KeyRelease { key }),
+    }
+}
+
+fn normalize_media_key(media_key_code: crossterm::event::MediaKeyCode) -> MediaKeyCode {
+    match media_key_code {
+        crossterm::event::MediaKeyCode::Play => MediaKeyCode::Play,
+        crossterm::event::MediaKeyCode::Pause => MediaKeyCode::Pause,
+        crossterm::event::MediaKeyCode::PlayPause => MediaKeyCode::PlayPause,
+        crossterm::event::MediaKeyCode::Reverse => MediaKeyCode::Reverse,
+        crossterm::event::MediaKeyCode::Stop => MediaKeyCode::Stop,
+        crossterm::event::MediaKeyCode::FastForward => MediaKeyCode::FastForward,
+        crossterm::event::MediaKeyCode::Rewind => MediaKeyCode::Rewind,
+        crossterm::event::MediaKeyCode::TrackNext => MediaKeyCode::TrackNext,
+        crossterm::event::MediaKeyCode::TrackPrevious => MediaKeyCode::TrackPrevious,
+        crossterm::event::MediaKeyCode::Record => MediaKeyCode::Record,
+        crossterm::event::MediaKeyCode::LowerVolume => MediaKeyCode::LowerVolume,
+        crossterm::event::MediaKeyCode::RaiseVolume => MediaKeyCode::RaiseVolume,
+        crossterm::event::MediaKeyCode::MuteVolume => MediaKeyCode::MuteVolume,
+    }
+}
+
+fn normalize_modifier_key(
+    modifier_key_code: crossterm::event::ModifierKeyCode
+) -> (ModifierKeyCode, ModifierKeyDirection) {
+    match modifier_key_code {
+        crossterm::event::ModifierKeyCode::LeftShift => {
+            (ModifierKeyCode::Shift, ModifierKeyDirection::Left)
+        },
+        crossterm::event::ModifierKeyCode::LeftControl => {
+            (ModifierKeyCode::Ctrl, ModifierKeyDirection::Left)
+        },
+        crossterm::event::ModifierKeyCode::LeftAlt => {
+            (ModifierKeyCode::Alt, ModifierKeyDirection::Left)
+        },
+        crossterm::event::ModifierKeyCode::LeftSuper => {
+            (ModifierKeyCode::Super, ModifierKeyDirection::Left)
+        },
+        crossterm::event::ModifierKeyCode::LeftHyper => {
+            (ModifierKeyCode::Hyper, ModifierKeyDirection::Left)
+        },
+        crossterm::event::ModifierKeyCode::LeftMeta => {
+            (ModifierKeyCode::Meta, ModifierKeyDirection::Left)
+        },
+        _ => unimplemented!(),
     }
 }
