@@ -6,7 +6,8 @@ use std::{
 use crossterm::{
     event::{
         DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent, MouseEventKind,
+        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent, MouseButton as CrosstermMouseButton,
+        MouseEvent as CrosstermMouseEvent, MouseEventKind,
     },
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -14,7 +15,7 @@ use ratatui::{Terminal, prelude::CrosstermBackend};
 use vtui_core::{
     driver::Driver,
     events::Message,
-    input::Input,
+    input::{Input, MouseButton},
     runtime::EventProducer,
 };
 
@@ -44,7 +45,7 @@ impl<W: Write> Driver for CrosstermDriver<W> {
         )?;
         Ok(())
     }
-
+ 
     fn teardown(mut self) -> io::Result<()> {
         crossterm::terminal::disable_raw_mode()?;
         crossterm::execute!(
@@ -74,13 +75,34 @@ impl<W: Write> EventProducer for CrosstermDriver<W> {
     }
 }
 
+fn normalize_mouse_event(mouse_event: CrosstermMouseEvent) -> Option<Input> {
+    fn normalize_button(button: CrosstermMouseButton) -> MouseButton {
+        match button {
+            CrosstermMouseButton::Left => MouseButton::Left,
+            CrosstermMouseButton::Right => MouseButton::Right,
+            CrosstermMouseButton::Middle => MouseButton::Middle,
+        }
+    }
+
+    let x = mouse_event.column;
+    let y = mouse_event.row;
+
+    match mouse_event.kind {
+        MouseEventKind::Down(button) => {
+            let button = normalize_button(button);
+            Some(Input::MouseDown { x, y, button })
+        }
+        MouseEventKind::Up(button) => {
+            let button = normalize_button(button);
+            Some(Input::MouseUp { x, y, button })
+        }
+        _ => None,
+    }
+}
+
 fn normalize_input(event: CrosstermEvent) -> Option<Input> {
     match event {
-        CrosstermEvent::Mouse(mouse_event) => match mouse_event.kind {
-            MouseEventKind::Down(_) => Some(Input::MouseDown),
-            MouseEventKind::Up(_) => Some(Input::MouseUp),
-            _ => None,
-        },
+        CrosstermEvent::Mouse(mouse_event) => normalize_mouse_event(mouse_event),
         _ => None,
     }
 }
