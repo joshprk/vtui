@@ -15,7 +15,7 @@ use ratatui::{Terminal, prelude::CrosstermBackend};
 use vtui_core::{
     driver::Driver,
     events::Message,
-    input::{Input, MouseButton},
+    input::{Input, MouseButton, MouseScrollDirection},
     runtime::EventProducer,
 };
 
@@ -96,6 +96,31 @@ fn normalize_mouse_event(mouse_event: CrosstermMouseEvent) -> Option<Input> {
             let button = normalize_button(button);
             Some(Input::MouseUp { x, y, button })
         }
+        MouseEventKind::Moved => Some(Input::MouseHover { x, y }),
+        MouseEventKind::Drag(button) => {
+            let button = normalize_button(button);
+            Some(Input::MouseDrag { x, y, button })
+        }
+        MouseEventKind::ScrollUp => Some(Input::Scroll {
+            x,
+            y,
+            direction: MouseScrollDirection::Up,
+        }),
+        MouseEventKind::ScrollDown => Some(Input::Scroll {
+            x,
+            y,
+            direction: MouseScrollDirection::Down,
+        }),
+        MouseEventKind::ScrollLeft => Some(Input::Scroll {
+            x,
+            y,
+            direction: MouseScrollDirection::Left,
+        }),
+        MouseEventKind::ScrollRight => Some(Input::Scroll {
+            x,
+            y,
+            direction: MouseScrollDirection::Right,
+        }),
         _ => None,
     }
 }

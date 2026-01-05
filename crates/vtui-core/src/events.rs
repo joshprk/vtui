@@ -1,6 +1,6 @@
 use std::any::{Any, TypeId};
 
-use crate::input::MouseButton;
+use crate::input::{MouseButton, MouseScrollDirection};
 
 pub trait Event: Send + 'static {}
 
@@ -36,3 +36,26 @@ pub struct MouseUp {
 }
 
 impl Event for MouseUp {}
+
+pub struct MouseHover {
+    pub x: u16,
+    pub y: u16,
+}
+
+impl Event for MouseHover {}
+
+pub struct MouseDrag {
+    pub x: u16,
+    pub y: u16,
+    pub button: MouseButton,
+}
+
+impl Event for MouseDrag {}
+
+pub struct MouseScroll {
+    pub x: u16,
+    pub y: u16,
+    pub direction: MouseScrollDirection,
+}
+
+impl Event for MouseScroll {}
