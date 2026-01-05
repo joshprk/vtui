@@ -8,16 +8,8 @@ pub enum MouseButton {
 }
 
 pub enum Input {
-    MouseDown {
-        x: u16,
-        y: u16,
-        button: MouseButton,
-    },
-    MouseUp {
-        x: u16,
-        y: u16,
-        button: MouseButton,
-    },
+    MouseDown { x: u16, y: u16, button: MouseButton },
+    MouseUp { x: u16, y: u16, button: MouseButton },
 }
 
 impl Input {

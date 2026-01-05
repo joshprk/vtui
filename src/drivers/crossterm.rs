@@ -6,8 +6,8 @@ use std::{
 use crossterm::{
     event::{
         DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent, MouseButton as CrosstermMouseButton,
-        MouseEvent as CrosstermMouseEvent, MouseEventKind,
+        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
+        MouseButton as CrosstermMouseButton, MouseEvent as CrosstermMouseEvent, MouseEventKind,
     },
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -45,7 +45,7 @@ impl<W: Write> Driver for CrosstermDriver<W> {
         )?;
         Ok(())
     }
- 
+
     fn teardown(mut self) -> io::Result<()> {
         crossterm::terminal::disable_raw_mode()?;
         crossterm::execute!(
