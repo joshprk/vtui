@@ -35,7 +35,7 @@ pub enum Input {
         y: u16,
         button: MouseButton,
     },
-    Scroll {
+    MouseScroll {
         x: u16,
         y: u16,
         direction: MouseScrollDirection,
@@ -49,7 +49,7 @@ impl Input {
             Input::MouseUp { x, y, button } => Message::new(MouseUp { x, y, button }),
             Input::MouseHover { x, y } => Message::new(MouseHover { x, y }),
             Input::MouseDrag { x, y, button } => Message::new(MouseDrag { x, y, button }),
-            Input::Scroll { x, y, direction } => Message::new(MouseScroll { x, y, direction }),
+            Input::MouseScroll { x, y, direction } => Message::new(MouseScroll { x, y, direction }),
         }
     }
 }

@@ -101,22 +101,22 @@ fn normalize_mouse_event(mouse_event: CrosstermMouseEvent) -> Option<Input> {
             let button = normalize_button(button);
             Some(Input::MouseDrag { x, y, button })
         }
-        MouseEventKind::ScrollUp => Some(Input::Scroll {
+        MouseEventKind::ScrollUp => Some(Input::MouseScroll {
             x,
             y,
             direction: MouseScrollDirection::Up,
         }),
-        MouseEventKind::ScrollDown => Some(Input::Scroll {
+        MouseEventKind::ScrollDown => Some(Input::MouseScroll {
             x,
             y,
             direction: MouseScrollDirection::Down,
         }),
-        MouseEventKind::ScrollLeft => Some(Input::Scroll {
+        MouseEventKind::ScrollLeft => Some(Input::MouseScroll {
             x,
             y,
             direction: MouseScrollDirection::Left,
         }),
-        MouseEventKind::ScrollRight => Some(Input::Scroll {
+        MouseEventKind::ScrollRight => Some(Input::MouseScroll {
             x,
             y,
             direction: MouseScrollDirection::Right,
