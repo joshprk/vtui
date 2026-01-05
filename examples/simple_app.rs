@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use ratatui::style::Style;
-use vtui::{events::Tick, prelude::*};
+use vtui::{events::MouseDown, input::MouseButton, prelude::*};
 
 #[component]
 fn App(c: &mut Component) {
@@ -14,7 +14,13 @@ fn App(c: &mut Component) {
         ctx.buf.set_string(1, 1, text, style);
     });
 
-    c.listen::<Tick>(move |ctx| *set_counter.borrow_mut() += 1);
+    c.listen::<MouseDown>(move |ctx| {
+        if ctx.event.button != MouseButton::Left {
+            return;
+        }
+
+        *set_counter.borrow_mut() += 1;
+    });
 }
 
 fn main() {
