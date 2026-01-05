@@ -6,14 +6,15 @@ use std::{
 use crossterm::{
     event::{
         DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture,
+        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent, MouseEventKind,
     },
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
 use vtui_core::{
     driver::Driver,
-    events::{Message, Tick},
+    events::Message,
+    input::Input,
     runtime::EventProducer,
 };
 
@@ -65,9 +66,21 @@ impl<W: Write> EventProducer for CrosstermDriver<W> {
     fn subscribe(tx: Sender<Message>) {
         loop {
             let crossterm_event = crossterm::event::read().unwrap();
-            let event = Tick {};
-            let message = Message::new(event);
-            let _ = tx.send(message);
+            if let Some(input) = normalize_input(crossterm_event) {
+                let message = input.to_message();
+                let _ = tx.send(message);
+            }
         }
+    }
+}
+
+fn normalize_input(event: CrosstermEvent) -> Option<Input> {
+    match event {
+        CrosstermEvent::Mouse(mouse_event) => match mouse_event.kind {
+            MouseEventKind::Down(_) => Some(Input::MouseDown),
+            MouseEventKind::Up(_) => Some(Input::MouseUp),
+            _ => None,
+        },
+        _ => None,
     }
 }

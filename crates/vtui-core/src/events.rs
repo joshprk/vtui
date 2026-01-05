@@ -6,6 +6,14 @@ pub struct Tick {}
 
 impl Event for Tick {}
 
+pub struct MouseDown {}
+
+impl Event for MouseDown {}
+
+pub struct MouseUp {}
+
+impl Event for MouseUp {}
+
 pub struct Message {
     pub type_id: TypeId,
     pub event: Box<dyn Any + Send>,
