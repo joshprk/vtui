@@ -2,7 +2,7 @@
 name = "vtui-core"
 version = "0.1.0-beta"
 edition = "2024"
-description = "A simple event-driven terminal UI framework"
+description = "A simple terminal UI framework"
 license = "MIT"
 
 [dependencies]
