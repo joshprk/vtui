@@ -19,7 +19,6 @@ pub enum ModifierKeyCode {
 pub enum ModifierKeyDirection {
     Left,
     Right,
-    Unknown,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
