@@ -5,15 +5,19 @@ use std::{
 
 use crossterm::{
     event::{
-        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste, EnableFocusChange, EnableMouseCapture, MouseEventKind
+        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
+        EnableFocusChange, EnableMouseCapture, MouseEventKind,
     },
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{Terminal, prelude::CrosstermBackend};
+use ratatui::{prelude::CrosstermBackend, Terminal};
 use vtui_core::{
     driver::Driver,
     events::Message,
-    input::{Input, KeyCode, MediaKeyCode, ModifierKeyCode, ModifierKeyDirection, MouseButton, MouseScrollDirection},
+    input::{
+        Input, KeyCode, MediaKeyCode, ModifierKeyCode, ModifierKeyDirection, MouseButton,
+        MouseScrollDirection,
+    },
     runtime::EventProducer,
 };
 
@@ -160,11 +164,11 @@ fn normalize_key_event(key_event: crossterm::event::KeyEvent) -> Option<Input> {
             crossterm::event::KeyCode::Media(key) => {
                 let key = normalize_media_key(key);
                 Some(KeyCode::Media(key))
-            },
+            }
             crossterm::event::KeyCode::Modifier(key) => {
                 let (key, direction) = normalize_modifier_key(key);
                 Some(KeyCode::Modifier(key, direction))
-            },
+            }
             crossterm::event::KeyCode::Null => None,
         }
     }
@@ -197,27 +201,50 @@ fn normalize_media_key(media_key_code: crossterm::event::MediaKeyCode) -> MediaK
 }
 
 fn normalize_modifier_key(
-    modifier_key_code: crossterm::event::ModifierKeyCode
+    modifier_key_code: crossterm::event::ModifierKeyCode,
 ) -> (ModifierKeyCode, ModifierKeyDirection) {
     match modifier_key_code {
         crossterm::event::ModifierKeyCode::LeftShift => {
             (ModifierKeyCode::Shift, ModifierKeyDirection::Left)
-        },
+        }
         crossterm::event::ModifierKeyCode::LeftControl => {
             (ModifierKeyCode::Ctrl, ModifierKeyDirection::Left)
-        },
+        }
         crossterm::event::ModifierKeyCode::LeftAlt => {
             (ModifierKeyCode::Alt, ModifierKeyDirection::Left)
-        },
+        }
         crossterm::event::ModifierKeyCode::LeftSuper => {
             (ModifierKeyCode::Super, ModifierKeyDirection::Left)
-        },
+        }
         crossterm::event::ModifierKeyCode::LeftHyper => {
             (ModifierKeyCode::Hyper, ModifierKeyDirection::Left)
-        },
+        }
         crossterm::event::ModifierKeyCode::LeftMeta => {
             (ModifierKeyCode::Meta, ModifierKeyDirection::Left)
-        },
-        _ => unimplemented!(),
+        }
+        crossterm::event::ModifierKeyCode::RightShift => {
+            (ModifierKeyCode::Shift, ModifierKeyDirection::Right)
+        }
+        crossterm::event::ModifierKeyCode::RightControl => {
+            (ModifierKeyCode::Ctrl, ModifierKeyDirection::Right)
+        }
+        crossterm::event::ModifierKeyCode::RightAlt => {
+            (ModifierKeyCode::Alt, ModifierKeyDirection::Right)
+        }
+        crossterm::event::ModifierKeyCode::RightSuper => {
+            (ModifierKeyCode::Super, ModifierKeyDirection::Right)
+        }
+        crossterm::event::ModifierKeyCode::RightHyper => {
+            (ModifierKeyCode::Hyper, ModifierKeyDirection::Right)
+        }
+        crossterm::event::ModifierKeyCode::RightMeta => {
+            (ModifierKeyCode::Meta, ModifierKeyDirection::Right)
+        }
+        crossterm::event::ModifierKeyCode::IsoLevel3Shift => {
+            (ModifierKeyCode::IsoLevel3Shift, ModifierKeyDirection::Left)
+        }
+        crossterm::event::ModifierKeyCode::IsoLevel5Shift => {
+            (ModifierKeyCode::IsoLevel5Shift, ModifierKeyDirection::Left)
+        }
     }
 }
