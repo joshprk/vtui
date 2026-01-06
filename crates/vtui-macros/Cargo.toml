@@ -1,6 +1,6 @@
 [package]
 name = "vtui-macros"
-version = "0.1.0-alpha"
+version = "0.1.0-beta"
 edition = "2024"
 description = "A simple event-driven terminal UI framework"
 license = "MIT"
