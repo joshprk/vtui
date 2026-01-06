@@ -1,7 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
 use ratatui::style::Style;
-use vtui::{events::{KeyPress, MouseDown}, input::{KeyCode, MouseButton}, prelude::*};
+use vtui::{
+    events::{KeyPress, MouseDown},
+    input::{KeyCode, MouseButton},
+    prelude::*,
+};
 
 #[component]
 fn App(c: &mut Component) {
