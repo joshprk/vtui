@@ -3,9 +3,10 @@ use std::{
     collections::HashMap,
 };
 
-use ratatui::{buffer::Buffer, layout::Rect};
-
-use crate::events::{Event, Message};
+use crate::{
+    context::{DrawContext, UpdateContext},
+    events::{Event, Message},
+};
 
 pub(crate) type DrawListener = Box<dyn Fn(&mut DrawContext)>;
 pub(crate) type Listener<E> = Box<dyn FnMut(&UpdateContext<E>)>;
@@ -69,13 +70,4 @@ impl<E: Event> ErasedListenerBucket for ListenerBucket<E> {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-}
-
-pub struct DrawContext<'a> {
-    pub buf: &'a mut Buffer,
-    pub rect: Rect,
-}
-
-pub struct UpdateContext<'a, E> {
-    pub event: &'a E,
 }

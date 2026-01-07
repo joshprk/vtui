@@ -1,6 +1,7 @@
 use crate::{
+    context::{DrawContext, UpdateContext},
     events::{Event, Message},
-    listeners::{DrawContext, DrawListener, ListenerStore, UpdateContext},
+    listeners::{DrawListener, ListenerStore},
 };
 
 #[derive(Default)]

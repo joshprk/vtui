@@ -2,7 +2,7 @@ use std::sync::mpsc::{Receiver, Sender};
 
 use ratatui::Frame;
 
-use crate::{component::Component, events::Message, listeners::DrawContext};
+use crate::{component::Component, context::DrawContext, events::Message};
 
 pub struct Runtime {
     root: Component,
@@ -14,11 +14,7 @@ impl Runtime {
     }
 
     pub fn draw(&self, frame: &mut Frame) {
-        let mut ctx = DrawContext {
-            rect: frame.area(),
-            buf: frame.buffer_mut(),
-        };
-
+        let mut ctx = DrawContext::new(frame.area(), frame.buffer_mut());
         self.root.render(&mut ctx)
     }
 
@@ -69,7 +65,7 @@ pub trait EventProducer {
 
 #[cfg(test)]
 mod tests {
-    use std::{any::Any, cell::RefCell, rc::Rc};
+    use std::{cell::RefCell, rc::Rc};
 
     use crate::{
         component::Component,
@@ -88,11 +84,7 @@ mod tests {
         });
 
         let mut runtime = Runtime::new(root);
-        let event = Tick {};
-        let message = Message {
-            type_id: event.type_id(),
-            event: Box::new(event),
-        };
+        let message = Message::new(Tick {});
 
         assert!(!*state.borrow());
 

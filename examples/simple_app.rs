@@ -1,11 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use ratatui::style::Style;
-use vtui::{
-    events::{KeyPress, MouseDown},
-    input::{KeyCode, MouseButton},
-    prelude::*,
-};
+use vtui::{events::MouseDown, input::MouseButton, prelude::*};
 
 #[component]
 fn App(c: &mut Component) {
@@ -15,7 +11,7 @@ fn App(c: &mut Component) {
     c.draw(move |ctx| {
         let style = Style::default();
         let text = format!("Counter: {}", counter.borrow());
-        ctx.buf.set_string(1, 1, text, style);
+        ctx.buffer_mut().set_string(1, 1, text, style);
     });
 
     c.listen::<MouseDown>(move |ctx| {
