@@ -14,8 +14,8 @@ impl Runtime {
     }
 
     pub fn draw(&self, frame: &mut Frame) {
-        let mut ctx = Canvas::new(frame.area(), frame.buffer_mut());
-        self.root.render(&mut ctx)
+        let mut canvas = Canvas::new(frame.area(), frame.buffer_mut());
+        self.root.render(&mut canvas);
     }
 
     pub fn update(&mut self, msg: Message) {
