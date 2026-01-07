@@ -1,7 +1,10 @@
 use std::io;
 
 use vtui_core::{
-    component::{Component, FactoryFn}, driver::Driver, error::RuntimeError, runtime::{EventSource, Runtime}
+    component::{Component, FactoryFn},
+    driver::Driver,
+    error::RuntimeError,
+    runtime::{EventSource, Runtime},
 };
 
 use crate::drivers::CrosstermDriver;
@@ -34,7 +37,5 @@ impl LaunchBuilder {
 }
 
 pub fn launch(app: FactoryFn) {
-    LaunchBuilder::default()
-        .launch(app)
-        .unwrap()
+    LaunchBuilder::default().launch(app).unwrap()
 }
