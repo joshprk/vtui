@@ -1,7 +1,7 @@
 use ratatui::style::Style;
 use std::{cell::RefCell, rc::Rc};
 use vtui::{
-    events::{KeyRelease, MouseDown},
+    events::{KeyPress, MouseDown},
     input::{KeyCode, MouseButton},
     prelude::*,
 };
@@ -17,14 +17,14 @@ fn App(c: &mut Component) {
     });
 
     c.listen::<MouseDown>(move |event| {
-        if event.button != MouseButton::Left {
+        if event.button == MouseButton::Left {
             *set_counter.borrow_mut() += 1;
         }
     });
 
-    c.listen::<KeyRelease>(|event| {
+    c.listen::<KeyPress>(|event| {
         if let KeyCode::Char('q') = event.key {
-            event.request_shutdown();
+            std::process::exit(0);
         }
     });
 }

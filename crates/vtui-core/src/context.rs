@@ -48,8 +48,4 @@ impl<'a, E: Event> EventContext<'a, E> {
     pub fn new(event: &'a E) -> Self {
         Self { event }
     }
-
-    pub fn request_shutdown(&self) {
-        unimplemented!()
-    }
 }
