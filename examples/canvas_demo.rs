@@ -7,7 +7,7 @@ use std::{cell::RefCell, rc::Rc};
 use vtui::{events::KeyPress, input::KeyCode, prelude::*};
 
 #[component]
-fn CanvasDemo(c: &mut Component) {
+fn CanvasDemo(c: &mut Component) -> Inner {
     let offset_x = Rc::new(RefCell::new(0u16));
     let offset_y = Rc::new(RefCell::new(0u16));
     let offset_x_read = offset_x.clone();
@@ -56,6 +56,8 @@ fn CanvasDemo(c: &mut Component) {
         KeyCode::Char('q') => std::process::exit(0),
         _ => {}
     });
+
+    Inner::default()
 }
 
 fn main() {

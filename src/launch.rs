@@ -2,14 +2,12 @@ use std::io;
 
 use thiserror::Error;
 use vtui_core::{
-    component::Component,
+    component::{Component, FactoryFn},
     driver::Driver,
     runtime::{EventSource, Runtime},
 };
 
 use crate::drivers::CrosstermDriver;
-
-type FactoryFn = fn(&mut Component);
 
 #[derive(Debug, Error)]
 pub enum LaunchError {
@@ -22,9 +20,7 @@ pub struct LaunchBuilder {}
 
 impl LaunchBuilder {
     pub fn launch(self, factory: FactoryFn) -> Result<(), LaunchError> {
-        let mut root = Component::default();
-        factory(&mut root);
-
+        let root = Component::with_factory(factory);
         let source = EventSource::new();
         let mut runtime = Runtime::new(root);
         let mut driver = CrosstermDriver::new(io::stdout());

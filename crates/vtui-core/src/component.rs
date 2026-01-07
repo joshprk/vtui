@@ -4,13 +4,23 @@ use crate::{
     listeners::{DrawListener, ListenerStore},
 };
 
+pub type FactoryFn = fn(&mut Component) -> Inner;
+
 #[derive(Default)]
 pub struct Component {
     draw_listener: Option<DrawListener>,
     listeners: ListenerStore,
+    inner: Inner,
 }
 
 impl Component {
+    pub fn with_factory(factory: FactoryFn) -> Self {
+        let mut component = Component::default();
+        let inner = factory(&mut component);
+        component.set_inner(inner);
+        component
+    }
+
     pub fn draw(&mut self, listener: impl Fn(&mut Canvas) + 'static) {
         self.draw_listener = Some(Box::new(listener));
     }
@@ -28,4 +38,11 @@ impl Component {
     pub(crate) fn update(&mut self, msg: &Message) {
         self.listeners.dispatch(msg)
     }
+
+    pub(crate) fn set_inner(&mut self, inner: Inner) {
+        self.inner = inner;
+    }
 }
+
+#[derive(Default)]
+pub struct Inner {}

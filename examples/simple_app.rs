@@ -6,8 +6,11 @@ use vtui::{
     prelude::*,
 };
 
+#[derive(Default)]
+pub struct Element {}
+
 #[component]
-fn App(c: &mut Component) {
+fn App(c: &mut Component) -> Inner {
     let counter = Rc::new(RefCell::new(0));
     let set_counter = counter.clone();
 
@@ -27,6 +30,8 @@ fn App(c: &mut Component) {
             std::process::exit(0);
         }
     });
+
+    Inner::default()
 }
 
 fn main() {

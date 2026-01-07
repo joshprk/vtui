@@ -9,7 +9,10 @@ pub mod drivers;
 mod launch;
 
 pub mod prelude {
-    pub use vtui_core::{component::Component, driver::Driver};
+    pub use vtui_core::{
+        component::{Component, Inner},
+        driver::Driver,
+    };
     pub use vtui_macros::component;
 }
 
