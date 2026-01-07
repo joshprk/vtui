@@ -2,7 +2,7 @@ use std::sync::mpsc::{Receiver, Sender};
 
 use ratatui::Frame;
 
-use crate::{component::Component, context::DrawContext, events::Message};
+use crate::{component::Component, context::Canvas, events::Message};
 
 pub struct Runtime {
     root: Component,
@@ -14,7 +14,7 @@ impl Runtime {
     }
 
     pub fn draw(&self, frame: &mut Frame) {
-        let mut ctx = DrawContext::new(frame.area(), frame.buffer_mut());
+        let mut ctx = Canvas::new(frame.area(), frame.buffer_mut());
         self.root.render(&mut ctx)
     }
 

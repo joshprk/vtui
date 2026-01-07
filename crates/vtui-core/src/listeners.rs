@@ -4,12 +4,12 @@ use std::{
 };
 
 use crate::{
-    context::{DrawContext, UpdateContext},
+    context::{Canvas, EventContext},
     events::{Event, Message},
 };
 
-pub(crate) type DrawListener = Box<dyn Fn(&mut DrawContext)>;
-pub(crate) type Listener<E> = Box<dyn FnMut(&UpdateContext<E>)>;
+pub(crate) type DrawListener = Box<dyn Fn(&mut Canvas)>;
+pub(crate) type Listener<E> = Box<dyn FnMut(&EventContext<E>)>;
 
 pub(crate) trait ErasedListenerBucket {
     fn dispatch(&mut self, msg: &Message);
@@ -60,7 +60,7 @@ impl<E: Event> ListenerBucket<E> {
 impl<E: Event> ErasedListenerBucket for ListenerBucket<E> {
     fn dispatch(&mut self, msg: &Message) {
         let event = msg.event.downcast_ref::<E>().expect("TypeId mismatch");
-        let ctx = UpdateContext { event };
+        let ctx = EventContext::new(event);
 
         for listener in &mut self.inner {
             listener(&ctx);
