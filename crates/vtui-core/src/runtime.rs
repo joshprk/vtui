@@ -1,8 +1,6 @@
 use std::sync::mpsc::{Receiver, Sender};
 
-use ratatui::Frame;
-
-use crate::{component::Component, context::Canvas, events::Message};
+use crate::{component::Component, context::Canvas, driver::Driver, events::Message};
 
 pub struct Runtime {
     root: Component,
@@ -13,9 +11,12 @@ impl Runtime {
         Self { root }
     }
 
-    pub fn draw(&self, frame: &mut Frame) {
-        let mut canvas = Canvas::new(frame.area(), frame.buffer_mut());
-        self.root.render(&mut canvas);
+    pub fn draw(&self, driver: &mut impl Driver) {
+        let terminal = driver.terminal();
+        let _ = terminal.draw(|f| {
+            let mut canvas = Canvas::new(f.area(), f.buffer_mut());
+            self.root.render(&mut canvas);
+        });
     }
 
     pub fn update(&mut self, msg: Message) {

@@ -1,6 +1,5 @@
 use std::io;
 
-use thiserror::Error;
 use vtui_core::{
     component::{Component, FactoryFn},
     driver::Driver,
@@ -9,46 +8,32 @@ use vtui_core::{
 
 use crate::drivers::CrosstermDriver;
 
-#[derive(Debug, Error)]
-pub enum LaunchError {
-    #[error("io error: {0}")]
-    Io(#[from] io::Error),
-}
-
 #[derive(Default)]
 pub struct LaunchBuilder {}
 
 impl LaunchBuilder {
-    pub fn launch(self, factory: FactoryFn) -> Result<(), LaunchError> {
+    pub fn launch(self, factory: FactoryFn) {
         let root = Component::with_factory(factory);
         let source = EventSource::new();
         let mut runtime = Runtime::new(root);
         let mut driver = CrosstermDriver::new(io::stdout());
 
         source.subscribe(&driver);
-        driver.setup()?;
-
-        let terminal = driver.terminal();
+        driver.setup();
 
         loop {
-            terminal.draw(|f| {
-                runtime.draw(f);
-            })?;
-
-            let event = source.recv();
-            runtime.update(event);
+            runtime.draw(&mut driver);
+            runtime.update(source.recv());
 
             if runtime.should_exit() {
                 break;
             }
         }
 
-        driver.teardown()?;
-
-        Ok(())
+        driver.teardown();
     }
 }
 
-pub fn launch(app: FactoryFn) -> Result<(), LaunchError> {
+pub fn launch(app: FactoryFn) {
     LaunchBuilder::default().launch(app)
 }
