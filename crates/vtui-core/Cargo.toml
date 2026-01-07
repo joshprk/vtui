@@ -7,3 +7,4 @@ license = "MIT"
 
 [dependencies]
 ratatui = { version = "0.30.0", default-features = false }
+thiserror = "2.0.17"

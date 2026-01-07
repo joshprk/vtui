@@ -1,6 +1,8 @@
 use std::sync::mpsc::{Receiver, Sender};
 
-use crate::{component::Component, context::Canvas, driver::Driver, events::Message};
+use ratatui::prelude::Backend;
+
+use crate::{component::Component, context::Canvas, driver::Driver, error::RuntimeError, events::Message};
 
 pub struct Runtime {
     root: Component,
@@ -11,12 +13,17 @@ impl Runtime {
         Self { root }
     }
 
-    pub fn draw(&self, driver: &mut impl Driver) {
+    pub fn draw<D>(&self, driver: &mut D) -> Result<(), RuntimeError>
+    where
+        D: Driver,
+        RuntimeError: From<<D::Backend as Backend>::Error>,
+    {
         let terminal = driver.terminal();
-        let _ = terminal.draw(|f| {
+        terminal.draw(|f| {
             let mut canvas = Canvas::new(f.area(), f.buffer_mut());
             self.root.render(&mut canvas);
-        });
+        })?;
+        Ok(())
     }
 
     pub fn update(&mut self, msg: Message) {
