@@ -3,12 +3,13 @@ use std::{
     collections::HashMap,
 };
 
-use ratatui::{buffer::Buffer, layout::Rect};
+use crate::{
+    context::{Canvas, EventContext},
+    events::{Event, Message},
+};
 
-use crate::events::{Event, Message};
-
-pub(crate) type DrawListener = Box<dyn Fn(&mut DrawContext)>;
-pub(crate) type Listener<E> = Box<dyn FnMut(&UpdateContext<E>)>;
+pub(crate) type DrawListener = Box<dyn Fn(&mut Canvas)>;
+pub(crate) type Listener<E> = Box<dyn FnMut(&EventContext<E>)>;
 
 pub(crate) trait ErasedListenerBucket {
     fn dispatch(&mut self, msg: &Message);
@@ -59,7 +60,7 @@ impl<E: Event> ListenerBucket<E> {
 impl<E: Event> ErasedListenerBucket for ListenerBucket<E> {
     fn dispatch(&mut self, msg: &Message) {
         let event = msg.event.downcast_ref::<E>().expect("TypeId mismatch");
-        let ctx = UpdateContext { event };
+        let ctx = EventContext::new(event);
 
         for listener in &mut self.inner {
             listener(&ctx);
@@ -69,13 +70,4 @@ impl<E: Event> ErasedListenerBucket for ListenerBucket<E> {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-}
-
-pub struct DrawContext<'a> {
-    pub buf: &'a mut Buffer,
-    pub rect: Rect,
-}
-
-pub struct UpdateContext<'a, E> {
-    pub event: &'a E,
 }
