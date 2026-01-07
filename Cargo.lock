@@ -696,7 +696,6 @@ version = "0.1.0-beta"
 dependencies = [
  "crossterm",
  "ratatui",
- "thiserror",
  "vtui-core",
  "vtui-macros",
 ]
