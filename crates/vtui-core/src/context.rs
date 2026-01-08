@@ -57,20 +57,37 @@ impl Canvas<'_> {
     pub fn render_widget(&mut self, rect: Rect, widget: impl Widget) {
         let temp_rect = Rect::new(0, 0, rect.width, rect.height);
         let mut temp_buf = Buffer::empty(temp_rect);
+
         widget.render(temp_rect, &mut temp_buf);
 
+        let area = self.buf.area;
+
+        let src_stride = rect.width as usize;
+        let dst_stride = area.width as usize;
+
         for y in 0..rect.height {
-            for x in 0..rect.width {
-                let Some(src) = temp_buf.cell((x, y)) else {
-                    break;
-                };
+            let src_row = y as usize * src_stride;
 
-                let Some(target) = self.buf.cell_mut((rect.x + x, rect.y + y)) else {
-                    break;
-                };
+            let dst_y = rect.y + self.offset_y + y;
 
-                *target = src.clone();
+            if dst_y >= area.height {
+                break;
             }
+
+            let dst_x = rect.x + self.offset_x;
+
+            if dst_x >= area.width {
+                break;
+            }
+
+            let dst_row = dst_y as usize * dst_stride + dst_x as usize;
+
+            let len = (rect.width as usize).min(area.width as usize - dst_x as usize);
+
+            let src = &temp_buf.content[src_row..src_row + len];
+            let dst = &mut self.buf.content[dst_row..dst_row + len];
+
+            dst.clone_from_slice(src);
         }
     }
 }
