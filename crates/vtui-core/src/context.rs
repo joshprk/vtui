@@ -55,34 +55,41 @@ impl Canvas<'_> {
     }
 
     pub fn render_widget(&mut self, rect: Rect, widget: impl Widget) {
+        let area = self.buf.area;
+
+        let base_x = rect.x + self.offset_x;
+        let base_y = rect.y + self.offset_y;
+
+        if base_x >= area.width || base_y >= area.height {
+            return;
+        }
+
         let temp_rect = Rect::new(0, 0, rect.width, rect.height);
         let mut temp_buf = Buffer::empty(temp_rect);
 
         widget.render(temp_rect, &mut temp_buf);
 
-        let area = self.buf.area;
+        let base_x = base_x as usize;
+        let base_y = base_y as usize;
+        let rect_width = rect.width as usize;
+        let rect_height = rect.height as usize;
+        let area_width = area.width as usize;
+        let area_height = area.height as usize;
 
-        let src_stride = rect.width as usize;
-        let dst_stride = area.width as usize;
+        let src_stride = rect_width;
+        let dst_stride = area_width;
 
-        for y in 0..rect.height {
-            let src_row = y as usize * src_stride;
+        let len = rect_width.min(area_width - base_x);
 
-            let dst_y = rect.y + self.offset_y + y;
+        for y in 0..rect_height {
+            let dst_y = base_y + y;
 
-            if dst_y >= area.height {
+            if dst_y >= area_height {
                 break;
             }
 
-            let dst_x = rect.x + self.offset_x;
-
-            if dst_x >= area.width {
-                break;
-            }
-
-            let dst_row = dst_y as usize * dst_stride + dst_x as usize;
-
-            let len = (rect.width as usize).min(area.width as usize - dst_x as usize);
+            let src_row = y * src_stride;
+            let dst_row = dst_y * dst_stride + base_x;
 
             let src = &temp_buf.content[src_row..src_row + len];
             let dst = &mut self.buf.content[dst_row..dst_row + len];
