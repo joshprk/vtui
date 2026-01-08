@@ -1,5 +1,6 @@
 use crate::{
-    context::{Canvas, EventContext},
+    canvas::Canvas,
+    context::EventContext,
     events::{Event, Message},
     listeners::{DrawListener, ListenerStore},
 };

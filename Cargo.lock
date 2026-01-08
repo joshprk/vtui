@@ -706,6 +706,8 @@ version = "0.1.0-beta"
 dependencies = [
  "ratatui",
  "thiserror",
+ "unicode-segmentation",
+ "unicode-width",
 ]
 
 [[package]]

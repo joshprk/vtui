@@ -3,13 +3,14 @@ use ratatui::{
     style::Style,
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
+use vtui_core::canvas::LogicalRect;
 use std::{cell::RefCell, rc::Rc};
 use vtui::{events::KeyPress, input::KeyCode, prelude::*};
 
 #[component]
 fn CanvasDemo(c: &mut Component) -> Inner {
-    let offset_x = Rc::new(RefCell::new(0u16));
-    let offset_y = Rc::new(RefCell::new(0u16));
+    let offset_x = Rc::new(RefCell::new(0));
+    let offset_y = Rc::new(RefCell::new(0));
     let offset_x_read = offset_x.clone();
     let offset_y_read = offset_y.clone();
 
@@ -26,16 +27,14 @@ fn CanvasDemo(c: &mut Component) -> Inner {
         let content = Paragraph::new("This widget content is protected from overflow panics")
             .block(block)
             .wrap(Wrap::default());
-
-        let content_rect = Rect {
-            x: 0,
-            y: 2,
-            width: 30,
-            height: 4,
-        };
+        let content_rect = LogicalRect::new(0, 2, 30, 4);
 
         canvas.text(0, 0, title, Style::default().light_cyan().bold());
         canvas.render_widget(content_rect, content);
+
+        for i in 10..1000 {
+            canvas.text(1, i, format!("Line {}", i), Style::default());
+        }
     });
 
     c.listen::<KeyPress>(move |event| match event.key {
