@@ -17,6 +17,8 @@ fn CanvasDemo(c: &mut Component) -> Inner {
         let ox = *offset_x_read.borrow();
         let oy = *offset_y_read.borrow();
 
+        canvas.set_offset(ox, oy);
+
         let title = format!("Canvas testing (x={}, y={})", ox, oy);
         let block = Block::default()
             .border_type(BorderType::Rounded)
@@ -26,8 +28,8 @@ fn CanvasDemo(c: &mut Component) -> Inner {
             .wrap(Wrap::default());
 
         let content_rect = Rect {
-            x: ox,
-            y: oy + 2,
+            x: 0,
+            y: 2,
             width: 30,
             height: 4,
         };
