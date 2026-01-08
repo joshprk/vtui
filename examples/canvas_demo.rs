@@ -8,8 +8,8 @@ use vtui::{events::KeyPress, input::KeyCode, prelude::*};
 
 #[component]
 fn CanvasDemo(c: &mut Component) -> Inner {
-    let offset_x = Rc::new(RefCell::new(0u16));
-    let offset_y = Rc::new(RefCell::new(0u16));
+    let offset_x = Rc::new(RefCell::new(0i32));
+    let offset_y = Rc::new(RefCell::new(0i32));
     let offset_x_read = offset_x.clone();
     let offset_y_read = offset_y.clone();
 
