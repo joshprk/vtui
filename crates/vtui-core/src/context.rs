@@ -54,14 +54,23 @@ impl Canvas<'_> {
         self.buf.set_string(abs_x, abs_y, text.into(), style)
     }
 
-    pub fn render_widget(&mut self, mut rect: Rect, widget: impl Widget) {
-        rect.x = rect.x.saturating_add(self.offset_x);
-        rect.y = rect.y.saturating_add(self.offset_y);
+    pub fn render_widget(&mut self, rect: Rect, widget: impl Widget) {
+        let temp_rect = Rect::new(0, 0, rect.width, rect.height);
+        let mut temp_buf = Buffer::empty(temp_rect);
+        widget.render(temp_rect, &mut temp_buf);
 
-        let rect = rect.intersection(self.buf.area);
+        for y in 0..rect.height {
+            for x in 0..rect.width {
+                let Some(src) = temp_buf.cell((x, y)) else {
+                    break;
+                };
 
-        if rect.area() > 0 {
-            widget.render(rect, self.buf);
+                let Some(target) = self.buf.cell_mut((rect.x + x, rect.y + y)) else {
+                    break;
+                };
+
+                *target = src.clone();
+            }
         }
     }
 }
