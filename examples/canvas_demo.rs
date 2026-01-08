@@ -3,9 +3,9 @@ use ratatui::{
     style::Style,
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
-use vtui_core::canvas::LogicalRect;
 use std::{cell::RefCell, rc::Rc};
 use vtui::{events::KeyPress, input::KeyCode, prelude::*};
+use vtui_core::canvas::LogicalRect;
 
 #[component]
 fn CanvasDemo(c: &mut Component) -> Inner {
@@ -32,8 +32,8 @@ fn CanvasDemo(c: &mut Component) -> Inner {
         canvas.text(0, 0, title, Style::default().light_cyan().bold());
         canvas.render_widget(content_rect, content);
 
-        for i in 10..1000 {
-            canvas.text(1, i, format!("Line {}", i), Style::default());
+        for i in 10..1_000_000 {
+            canvas.text(1, i, "Hi there", Style::default());
         }
     });
 

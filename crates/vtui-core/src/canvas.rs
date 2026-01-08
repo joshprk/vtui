@@ -114,14 +114,8 @@ impl<'a> Canvas<'a> {
 }
 
 impl Canvas<'_> {
-    fn set_stringn<T, S>(
-        &mut self,
-        x: i32,
-        y: i32,
-        text: T,
-        max_width: usize,
-        style: S,
-    ) where
+    fn set_stringn<T, S>(&mut self, x: i32, y: i32, text: T, max_width: usize, style: S)
+    where
         T: AsRef<str>,
         S: Into<Style>,
     {
@@ -173,9 +167,7 @@ impl Canvas<'_> {
                 break;
             }
 
-            self.buf[(cursor, row)]
-                .set_symbol(g)
-                .set_style(style);
+            self.buf[(cursor, row)].set_symbol(g).set_style(style);
 
             let end = cursor + width;
             cursor += 1;

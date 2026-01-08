@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use ratatui::prelude::Backend;
 
 use crate::{
-    component::Component, canvas::Canvas, driver::Driver, error::RuntimeError, events::Message,
+    canvas::Canvas, component::Component, driver::Driver, error::RuntimeError, events::Message,
 };
 
 pub struct Runtime {
