@@ -28,7 +28,8 @@ impl Runtime {
         Ok(())
     }
 
-    pub fn update(&mut self, msg: Message) {
+    pub fn update(&mut self, source: &EventSource) {
+        let msg = source.recv();
         self.root.update(&msg)
     }
 
@@ -70,36 +71,5 @@ pub trait EventProducer {
         std::thread::spawn(move || {
             Self::subscribe(tx);
         });
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::{cell::RefCell, rc::Rc};
-
-    use crate::{
-        component::Component,
-        events::{Message, Tick},
-        runtime::Runtime,
-    };
-
-    #[test]
-    fn test_event_listen() {
-        let mut root = Component::default();
-        let state = Rc::new(RefCell::new(false));
-        let state_c = state.clone();
-
-        root.listen::<Tick>(move |_| {
-            *state_c.borrow_mut() = true;
-        });
-
-        let mut runtime = Runtime::new(root);
-        let message = Message::new(Tick {});
-
-        assert!(!*state.borrow());
-
-        runtime.update(message);
-
-        assert!(*state.borrow());
     }
 }

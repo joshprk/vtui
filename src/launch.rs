@@ -24,7 +24,7 @@ impl LaunchBuilder {
 
         loop {
             runtime.draw(&mut driver)?;
-            runtime.update(source.recv());
+            runtime.update(&source);
 
             if runtime.should_exit() {
                 break;
