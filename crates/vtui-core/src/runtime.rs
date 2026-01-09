@@ -1,4 +1,4 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::{sync::mpsc::{Receiver, Sender}, time::{Duration, Instant}};
 
 use ratatui::prelude::Backend;
 
@@ -29,8 +29,17 @@ impl Runtime {
     }
 
     pub fn update(&mut self, source: &EventSource) {
+        let deadline = Instant::now() + Duration::from_millis(16);
         let msg = source.recv();
-        self.root.update(&msg)
+
+        self.root.update(&msg);
+
+        while Instant::now() < deadline {
+            let msg = source.recv_timeout(deadline - Instant::now());
+            if let Some(msg) = msg {
+                self.root.update(&msg);
+            }
+        }
     }
 
     pub fn should_exit(&self) -> bool {
@@ -57,6 +66,10 @@ impl EventSource {
 
     pub fn recv(&self) -> Message {
         self.rx.recv().unwrap()
+    }
+    
+    pub fn recv_timeout(&self, budget: Duration) -> Option<Message> {
+        self.rx.recv_timeout(budget).ok()
     }
 
     pub fn subscribe(&self, producer: &impl EventProducer) {
