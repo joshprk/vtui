@@ -33,7 +33,12 @@ impl LogicalRect {
 
     pub fn intersection(self, other: Self) -> Self {
         if !self.intersects(other) {
-            return Self { x: 0, y: 0, width: 0, height: 0 };
+            return Self {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+            };
         }
 
         let x1 = self.x.max(other.x);
@@ -60,10 +65,10 @@ impl LogicalRect {
 
     #[inline(always)]
     pub fn intersects(self, other: Self) -> bool {
-        self.y < other.y + other.height &&
-        self.y + self.height > other.y &&
-        self.x < other.x + other.width &&
-        self.x + self.width > other.x
+        self.y < other.y + other.height
+            && self.y + self.height > other.y
+            && self.x < other.x + other.width
+            && self.x + self.width > other.x
     }
 
     pub fn with_offset(mut self, offset_x: i32, offset_y: i32) -> Self {
