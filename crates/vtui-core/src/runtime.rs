@@ -1,4 +1,7 @@
-use std::{sync::mpsc::{Receiver, Sender}, time::{Duration, Instant}};
+use std::{
+    sync::mpsc::{Receiver, Sender},
+    time::{Duration, Instant},
+};
 
 use ratatui::prelude::Backend;
 
@@ -67,7 +70,7 @@ impl EventSource {
     pub fn recv(&self) -> Message {
         self.rx.recv().unwrap()
     }
-    
+
     pub fn recv_timeout(&self, budget: Duration) -> Option<Message> {
         self.rx.recv_timeout(budget).ok()
     }
