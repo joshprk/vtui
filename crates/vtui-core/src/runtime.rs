@@ -11,11 +11,15 @@ use crate::{
 
 pub struct Runtime {
     root: Component,
+    shutdown_requested: bool,
 }
 
 impl Runtime {
     pub fn new(root: Component) -> Self {
-        Self { root }
+        Self {
+            root,
+            shutdown_requested: false,
+        }
     }
 
     pub fn draw<D>(&self, driver: &mut D) -> Result<(), RuntimeError>
@@ -46,7 +50,13 @@ impl Runtime {
     }
 
     pub fn should_exit(&self) -> bool {
-        false
+        self.shutdown_requested
+    }
+}
+
+impl Runtime {
+    pub fn request_shutdown(&mut self) {
+        self.shutdown_requested = true;
     }
 }
 
