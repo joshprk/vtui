@@ -2,20 +2,30 @@ use std::ops::Deref;
 
 use crate::events::Event;
 
-pub struct EventContext<'a, E: Event> {
-    event: &'a E,
+pub struct EventContext<'rt, E: Event> {
+    event: &'rt E,
+    context: &'rt mut Context,
 }
 
-impl<'a, E: Event> Deref for EventContext<'a, E> {
+impl<'rt, E: Event> Deref for EventContext<'rt, E> {
     type Target = E;
 
-    fn deref(&self) -> &'a Self::Target {
+    fn deref(&self) -> &'rt Self::Target {
         self.event
     }
 }
 
-impl<'a, E: Event> EventContext<'a, E> {
-    pub fn new(event: &'a E) -> Self {
-        Self { event }
+impl<'rt, E: Event> EventContext<'rt, E> {
+    pub(crate) fn new(event: &'rt E, context: &'rt mut Context) -> Self {
+        Self { event, context }
     }
+
+    pub fn request_shutdown(&mut self) {
+        self.context.shutdown_requested = true;
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct Context {
+    pub shutdown_requested: bool,
 }

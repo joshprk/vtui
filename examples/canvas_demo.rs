@@ -30,10 +30,10 @@ fn CanvasDemo(c: &mut Component) -> Inner {
 
         if event.key == KeyCode::Down {
             offset.1 += 1;
-        } else if event.key == KeyCode::Up {
+        } else if event.key == KeyCode::Up && offset.1 > 0 {
             offset.1 -= 1;
         } else if event.key == KeyCode::Char('q') {
-            std::process::exit(0);
+            event.request_shutdown();
         }
     });
 
