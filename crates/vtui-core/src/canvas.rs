@@ -4,10 +4,10 @@ use unicode_width::UnicodeWidthStr;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LogicalRect {
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
 }
 
 impl From<Rect> for LogicalRect {
@@ -22,18 +22,6 @@ impl From<Rect> for LogicalRect {
 }
 
 impl LogicalRect {
-    #[inline]
-    fn intersect_corners(self, other: Self) -> (i32, i32, i32, i32) {
-        let x1 = self.x.max(other.x);
-        let y1 = self.y.max(other.y);
-        let x2 = self.right().min(other.right());
-        let y2 = self.bottom().min(other.bottom());
-
-        (x1, y1, x2, y2)
-    }
-}
-
-impl LogicalRect {
     pub fn new(x: i32, y: i32, width: u16, height: u16) -> Self {
         Self {
             x,
@@ -44,7 +32,14 @@ impl LogicalRect {
     }
 
     pub fn intersection(self, other: Self) -> Self {
-        let (x1, y1, x2, y2) = self.intersect_corners(other);
+        if !self.intersects(other) {
+            return Self { x: 0, y: 0, width: 0, height: 0 };
+        }
+
+        let x1 = self.x.max(other.x);
+        let y1 = self.y.max(other.y);
+        let x2 = self.right().min(other.right());
+        let y2 = self.bottom().min(other.bottom());
 
         if x2 <= x1 || y2 <= y1 {
             LogicalRect {
@@ -63,9 +58,12 @@ impl LogicalRect {
         }
     }
 
+    #[inline(always)]
     pub fn intersects(self, other: Self) -> bool {
-        let (x1, y1, x2, y2) = self.intersect_corners(other);
-        x2 > x1 && y2 > y1
+        self.y < other.y + other.height &&
+        self.y + self.height > other.y &&
+        self.x < other.x + other.width &&
+        self.x + self.width > other.x
     }
 
     pub fn with_offset(mut self, offset_x: i32, offset_y: i32) -> Self {
