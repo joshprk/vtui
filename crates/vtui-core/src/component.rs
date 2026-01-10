@@ -15,6 +15,12 @@ pub struct Component {
 }
 
 impl Component {
+    fn set_inner(&mut self, inner: Inner) {
+        self.inner = inner;
+    }
+}
+
+impl Component {
     pub fn with_factory(factory: FactoryFn) -> Self {
         let mut component = Component::default();
         let inner = factory(&mut component);
@@ -37,11 +43,9 @@ impl Component {
     }
 
     pub(crate) fn update(&mut self, msg: &Message, ctx: &mut Context) {
-        self.listeners.dispatch(msg, ctx)
-    }
-
-    pub(crate) fn set_inner(&mut self, inner: Inner) {
-        self.inner = inner;
+        if let Some(listeners) = self.listeners.get_mut(msg) {
+            listeners.dispatch(msg, ctx);
+        }
     }
 }
 

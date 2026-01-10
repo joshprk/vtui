@@ -23,12 +23,9 @@ pub(crate) struct ListenerStore {
 }
 
 impl ListenerStore {
-    pub fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
+    pub fn get_mut(&mut self, msg: &Message) -> Option<&mut Box<dyn ErasedListenerBucket>> {
         let type_id = msg.type_id;
-
-        if let Some(listeners) = self.inner.get_mut(&type_id) {
-            listeners.dispatch(msg, ctx);
-        }
+        self.inner.get_mut(&type_id)
     }
 
     pub fn push<E: Event>(&mut self, listener: Listener<E>) {
