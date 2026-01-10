@@ -263,9 +263,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.179"
+version = "0.2.180"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5a2d376baa530d1238d133232d15e239abad80d05838b4b59354e5268af431f"
+checksum = "bcc35a38544a891a5f7c865aca548a982ccb3b8650a5b06d0fd33a10283c56fc"
 
 [[package]]
 name = "line-clipping"
@@ -692,7 +692,7 @@ checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
 name = "vtui"
-version = "0.1.0-beta"
+version = "0.1.0-rc.1"
 dependencies = [
  "crossterm",
  "ratatui",
@@ -702,7 +702,7 @@ dependencies = [
 
 [[package]]
 name = "vtui-core"
-version = "0.1.0-beta"
+version = "0.1.0-rc.1"
 dependencies = [
  "ratatui",
  "thiserror",
@@ -712,7 +712,7 @@ dependencies = [
 
 [[package]]
 name = "vtui-macros"
-version = "0.1.0-beta"
+version = "0.1.0-rc.1"
 dependencies = [
  "quote",
  "syn",
