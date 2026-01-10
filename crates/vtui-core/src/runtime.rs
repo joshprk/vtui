@@ -6,20 +6,19 @@ use std::{
 use ratatui::prelude::Backend;
 
 use crate::{
-    canvas::Canvas, component::Component, driver::Driver, error::RuntimeError, events::Message,
+    canvas::Canvas, component::Component, context::Context, driver::Driver, error::RuntimeError,
+    events::Message,
 };
 
 pub struct Runtime {
     root: Component,
-    shutdown_requested: bool,
+    context: Context,
 }
 
 impl Runtime {
     pub fn new(root: Component) -> Self {
-        Self {
-            root,
-            shutdown_requested: false,
-        }
+        let context = Context::default();
+        Self { root, context }
     }
 
     pub fn draw<D>(&self, driver: &mut D) -> Result<(), RuntimeError>
@@ -39,24 +38,18 @@ impl Runtime {
         let deadline = Instant::now() + Duration::from_millis(16);
         let msg = source.recv();
 
-        self.root.update(&msg);
+        self.root.update(&msg, &mut self.context);
 
         while Instant::now() < deadline {
             let msg = source.recv_timeout(deadline - Instant::now());
             if let Some(msg) = msg {
-                self.root.update(&msg);
+                self.root.update(&msg, &mut self.context);
             }
         }
     }
 
     pub fn should_exit(&self) -> bool {
-        self.shutdown_requested
-    }
-}
-
-impl Runtime {
-    pub fn request_shutdown(&mut self) {
-        self.shutdown_requested = true;
+        self.context.shutdown_requested
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::{
     canvas::Canvas,
-    context::EventContext,
+    context::{Context, EventContext},
     events::{Event, Message},
     listeners::{DrawListener, ListenerStore},
 };
@@ -15,6 +15,12 @@ pub struct Component {
 }
 
 impl Component {
+    fn set_inner(&mut self, inner: Inner) {
+        self.inner = inner;
+    }
+}
+
+impl Component {
     pub fn with_factory(factory: FactoryFn) -> Self {
         let mut component = Component::default();
         let inner = factory(&mut component);
@@ -26,7 +32,7 @@ impl Component {
         self.draw_listener = Some(Box::new(listener));
     }
 
-    pub fn listen<E: Event>(&mut self, listener: impl FnMut(&EventContext<E>) + 'static) {
+    pub fn listen<E: Event>(&mut self, listener: impl FnMut(&mut EventContext<E>) + 'static) {
         self.listeners.push(Box::new(listener))
     }
 
@@ -36,12 +42,10 @@ impl Component {
         }
     }
 
-    pub(crate) fn update(&mut self, msg: &Message) {
-        self.listeners.dispatch(msg)
-    }
-
-    pub(crate) fn set_inner(&mut self, inner: Inner) {
-        self.inner = inner;
+    pub(crate) fn update(&mut self, msg: &Message, ctx: &mut Context) {
+        if let Some(listeners) = self.listeners.get_mut(msg) {
+            listeners.dispatch(msg, ctx);
+        }
     }
 }
 

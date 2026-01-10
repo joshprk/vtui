@@ -27,7 +27,7 @@ fn App(c: &mut Component) -> Inner {
 
     c.listen::<KeyPress>(|event| {
         if let KeyCode::Char('q') = event.key {
-            std::process::exit(0);
+            event.request_shutdown();
         }
     });
 

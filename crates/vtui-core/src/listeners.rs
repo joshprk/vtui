@@ -5,15 +5,15 @@ use std::{
 
 use crate::{
     canvas::Canvas,
-    context::EventContext,
+    context::{Context, EventContext},
     events::{Event, Message},
 };
 
 pub(crate) type DrawListener = Box<dyn Fn(&mut Canvas)>;
-pub(crate) type Listener<E> = Box<dyn FnMut(&EventContext<E>)>;
+pub(crate) type Listener<E> = Box<dyn FnMut(&mut EventContext<E>)>;
 
 pub(crate) trait ErasedListenerBucket {
-    fn dispatch(&mut self, msg: &Message);
+    fn dispatch(&mut self, msg: &Message, ctx: &mut Context);
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
@@ -23,12 +23,9 @@ pub(crate) struct ListenerStore {
 }
 
 impl ListenerStore {
-    pub fn dispatch(&mut self, msg: &Message) {
+    pub fn get_mut(&mut self, msg: &Message) -> Option<&mut Box<dyn ErasedListenerBucket>> {
         let type_id = msg.type_id;
-
-        if let Some(listeners) = self.inner.get_mut(&type_id) {
-            listeners.dispatch(msg);
-        }
+        self.inner.get_mut(&type_id)
     }
 
     pub fn push<E: Event>(&mut self, listener: Listener<E>) {
@@ -59,12 +56,12 @@ impl<E: Event> ListenerBucket<E> {
 }
 
 impl<E: Event> ErasedListenerBucket for ListenerBucket<E> {
-    fn dispatch(&mut self, msg: &Message) {
+    fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
         let event = msg.event.downcast_ref::<E>().expect("TypeId mismatch");
-        let ctx = EventContext::new(event);
+        let mut ctx = EventContext::new(event, ctx);
 
         for listener in &mut self.inner {
-            listener(&ctx);
+            listener(&mut ctx);
         }
     }
 
