@@ -10,6 +10,7 @@ mod launch;
 
 pub mod prelude {
     pub use vtui_core::{
+        canvas::LogicalRect,
         component::{Component, Inner},
         driver::Driver,
     };
