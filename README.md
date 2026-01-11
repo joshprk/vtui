@@ -3,6 +3,10 @@
     <pre>[vtui]</pre>
   </h1>
   <p>A simple terminal UI framework.</p>
+  <a href="https://crates.io/crates/vtui">
+    <img alt="Crates.io Version" src="https://img.shields.io/crates/v/vtui"></img>
+  </a>
+  </br></br>
   <p align="center">
     <a href="#about">About</a> · <a href="#usage">Usage</a></br>
     <a href="https://docs.rs/vtui/latest/vtui/">Documentation</a></br>
