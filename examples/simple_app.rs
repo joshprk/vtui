@@ -1,5 +1,4 @@
 use ratatui::style::Style;
-use std::{cell::RefCell, rc::Rc};
 use vtui::{
     events::{KeyPress, MouseDown},
     input::{KeyCode, MouseButton},
@@ -8,17 +7,16 @@ use vtui::{
 
 #[component]
 fn App(c: &mut Component) -> Inner {
-    let counter = Rc::new(RefCell::new(0));
-    let set_counter = counter.clone();
+    let mut counter = c.state(0);
 
     c.draw(move |canvas| {
-        let text = format!("Counter: {}", counter.borrow());
+        let text = format!("Counter: {}", counter.read());
         canvas.text(0, 0, text, Style::default());
     });
 
     c.listen::<MouseDown>(move |event| {
         if event.button == MouseButton::Left {
-            *set_counter.borrow_mut() += 1;
+            *counter.write() += 1;
         }
     });
 
