@@ -1,13 +1,10 @@
-use std::{
-    sync::mpsc::{Receiver, Sender},
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use ratatui::prelude::Backend;
 
 use crate::{
     canvas::Canvas, component::Component, context::Context, driver::Driver, error::RuntimeError,
-    events::Message,
+    transport::EventSource,
 };
 
 pub struct Runtime {
@@ -50,45 +47,5 @@ impl Runtime {
 
     pub fn should_exit(&self) -> bool {
         self.context.shutdown_requested
-    }
-}
-
-pub struct EventSource {
-    tx: Sender<Message>,
-    rx: Receiver<Message>,
-}
-
-impl Default for EventSource {
-    fn default() -> Self {
-        let (tx, rx) = std::sync::mpsc::channel();
-        Self { tx, rx }
-    }
-}
-
-impl EventSource {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn recv(&self) -> Message {
-        self.rx.recv().unwrap()
-    }
-
-    pub fn recv_timeout(&self, budget: Duration) -> Option<Message> {
-        self.rx.recv_timeout(budget).ok()
-    }
-
-    pub fn subscribe(&self, producer: &impl EventProducer) {
-        producer.spawn(self.tx.clone());
-    }
-}
-
-pub trait EventProducer {
-    fn subscribe(tx: Sender<Message>);
-
-    fn spawn(&self, tx: Sender<Message>) {
-        std::thread::spawn(move || {
-            Self::subscribe(tx);
-        });
     }
 }

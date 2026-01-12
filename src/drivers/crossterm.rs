@@ -1,7 +1,4 @@
-use std::{
-    io::{self, Write},
-    sync::mpsc::Sender,
-};
+use std::io::{self, Write};
 
 use crossterm::{
     event::{
@@ -13,12 +10,11 @@ use crossterm::{
 use ratatui::{Terminal, prelude::CrosstermBackend};
 use vtui_core::{
     driver::Driver,
-    events::Message,
     input::{
         Input, KeyCode, MediaKeyCode, ModifierKeyCode, ModifierKeyDirection, MouseButton,
         MouseScrollDirection,
     },
-    runtime::EventProducer,
+    transport::{EventProducer, EventSink},
 };
 
 pub struct CrosstermDriver<W: Write> {
@@ -66,12 +62,17 @@ impl<W: Write> Driver for CrosstermDriver<W> {
 }
 
 impl<W: Write> EventProducer for CrosstermDriver<W> {
-    fn subscribe(tx: Sender<Message>) {
+    fn subscribe(tx: EventSink) {
         loop {
-            let crossterm_event = crossterm::event::read().unwrap();
-            if let Some(input) = normalize_input(crossterm_event) {
-                let message = input.to_message();
-                let _ = tx.send(message);
+            let event = crossterm::event::read().expect("crossterm::event::read failed");
+
+            let msg = match normalize_input(event) {
+                Some(input) => input.to_message(),
+                None => continue,
+            };
+
+            if tx.send(msg).is_err() {
+                break;
             }
         }
     }

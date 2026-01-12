@@ -1,6 +1,7 @@
 pub use vtui_core::events;
 pub use vtui_core::input;
 pub use vtui_core::runtime;
+pub use vtui_core::transport;
 
 pub use crate::launch::launch;
 

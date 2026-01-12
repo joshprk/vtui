@@ -4,7 +4,8 @@ use vtui_core::{
     component::{Component, FactoryFn},
     driver::Driver,
     error::RuntimeError,
-    runtime::{EventSource, Runtime},
+    runtime::Runtime,
+    transport::EventSource,
 };
 
 use crate::drivers::CrosstermDriver;
