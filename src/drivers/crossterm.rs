@@ -1,4 +1,7 @@
-use std::{io::{self, Write}, thread::JoinHandle};
+use std::{
+    io::{self, Write},
+    thread::JoinHandle,
+};
 
 use crossterm::{
     event::{
