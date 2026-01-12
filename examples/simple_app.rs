@@ -6,9 +6,6 @@ use vtui::{
     prelude::*,
 };
 
-#[derive(Default)]
-pub struct Element {}
-
 #[component]
 fn App(c: &mut Component) -> Inner {
     let counter = Rc::new(RefCell::new(0));
