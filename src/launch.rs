@@ -17,15 +17,16 @@ impl LaunchBuilder {
     pub fn launch(self, factory: FactoryFn) -> Result<(), RuntimeError> {
         let root = Component::with_factory(factory);
         let source = EventSource::new();
-        let mut runtime = Runtime::new(root);
         let mut driver = CrosstermDriver::new(io::stdout());
 
         source.subscribe(&driver);
         driver.setup()?;
 
+        let mut runtime = Runtime::new(root, source);
+
         loop {
             runtime.draw(&mut driver)?;
-            runtime.update(&source);
+            runtime.update();
 
             if runtime.should_exit() {
                 break;

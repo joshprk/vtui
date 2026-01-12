@@ -10,12 +10,17 @@ use crate::{
 pub struct Runtime {
     root: Component,
     context: Context,
+    source: EventSource,
 }
 
 impl Runtime {
-    pub fn new(root: Component) -> Self {
+    pub fn new(root: Component, source: EventSource) -> Self {
         let context = Context::default();
-        Self { root, context }
+        Self {
+            root,
+            context,
+            source,
+        }
     }
 
     pub fn draw<D>(&self, driver: &mut D) -> Result<(), RuntimeError>
@@ -31,14 +36,14 @@ impl Runtime {
         Ok(())
     }
 
-    pub fn update(&mut self, source: &EventSource) {
+    pub fn update(&mut self) {
         let deadline = Instant::now() + Duration::from_millis(16);
-        let msg = source.recv();
+        let msg = self.source.recv();
 
         self.root.update(&msg, &mut self.context);
 
         while Instant::now() < deadline {
-            let msg = source.recv_timeout(deadline - Instant::now());
+            let msg = self.source.recv_timeout(deadline - Instant::now());
             if let Some(msg) = msg {
                 self.root.update(&msg, &mut self.context);
             }
