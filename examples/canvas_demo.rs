@@ -2,7 +2,6 @@ use std::{cell::RefCell, rc::Rc};
 
 use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
 use vtui::{events::KeyPress, input::KeyCode, prelude::*};
-use vtui_core::canvas::LogicalRect;
 
 #[component]
 fn CanvasDemo(c: &mut Component) -> Inner {
