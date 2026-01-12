@@ -6,6 +6,7 @@ description = "A simple terminal UI framework"
 license = "MIT"
 
 [dependencies]
+generational-box = "0.7.2"
 ratatui = { version = "0.30.0", default-features = false }
 thiserror = "2.0.17"
 unicode-segmentation = "1.12.0"

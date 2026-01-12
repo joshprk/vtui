@@ -23,26 +23,28 @@ to complex UI features like scrolling.
 ## Usage
 
 ```rs
-use std::{rc::Rc, cell::RefCell};
-
 use ratatui::style::Style;
 use vtui::{events::*, input::*, prelude::*};
 
 #[component]
 fn App(c: &mut Component) -> Inner {
-    let clicks = Rc::new(RefCell::new(0));
-    let set_clicks = clicks.clone();
+    let mut clicks = c.state(0);
 
     c.draw(move |canvas| {
-        canvas.text(0, 0, format!("Clicks: {}", clicks.borrow()), Style::default());
+        let text = format!("Clicks: {}", *clicks.read());
+        canvas.text(0, 0, text, Style::default());
     });
 
-    c.listen::<MouseDown>(move |e| if e.button == MouseButton::Left {
-        *set_clicks.borrow_mut() += 1
+    c.listen::<MouseDown>(move |event| {
+        if event.button == MouseButton::Left {
+            *clicks.write() += 1;
+        }
     });
 
-    c.listen::<KeyPress>(|e| if e.key == KeyCode::Char('q') {
-        e.request_shutdown();
+    c.listen::<KeyPress>(|event| {
+        if event.key == KeyCode::Char('q') {
+            event.request_shutdown();
+        }
     });
 
     Inner::default()

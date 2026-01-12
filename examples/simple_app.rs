@@ -1,29 +1,23 @@
 use ratatui::style::Style;
-use std::{cell::RefCell, rc::Rc};
-use vtui::{
-    events::{KeyPress, MouseDown},
-    input::{KeyCode, MouseButton},
-    prelude::*,
-};
+use vtui::{events::*, input::*, prelude::*};
 
 #[component]
 fn App(c: &mut Component) -> Inner {
-    let counter = Rc::new(RefCell::new(0));
-    let set_counter = counter.clone();
+    let mut clicks = c.state(0);
 
     c.draw(move |canvas| {
-        let text = format!("Counter: {}", counter.borrow());
+        let text = format!("Clicks: {}", *clicks.read());
         canvas.text(0, 0, text, Style::default());
     });
 
     c.listen::<MouseDown>(move |event| {
         if event.button == MouseButton::Left {
-            *set_counter.borrow_mut() += 1;
+            *clicks.write() += 1;
         }
     });
 
     c.listen::<KeyPress>(|event| {
-        if let KeyCode::Char('q') = event.key {
+        if event.key == KeyCode::Char('q') {
             event.request_shutdown();
         }
     });

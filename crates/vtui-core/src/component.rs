@@ -3,6 +3,7 @@ use crate::{
     context::{Context, EventContext},
     events::{Event, Message},
     listeners::{DrawListener, ListenerStore},
+    state::{State, StateOwner},
 };
 
 pub type FactoryFn = fn(&mut Component) -> Inner;
@@ -11,6 +12,7 @@ pub type FactoryFn = fn(&mut Component) -> Inner;
 pub struct Component {
     draw_listener: Option<DrawListener>,
     listeners: ListenerStore,
+    state_arena: StateOwner,
     inner: Inner,
 }
 
@@ -36,6 +38,12 @@ impl Component {
         self.listeners.push(Box::new(listener))
     }
 
+    pub fn state<T: 'static>(&self, value: T) -> State<T> {
+        self.state_arena.insert(value)
+    }
+}
+
+impl Component {
     pub(crate) fn render(&self, ctx: &mut Canvas) {
         if let Some(ref draw_listener) = self.draw_listener {
             draw_listener(ctx)

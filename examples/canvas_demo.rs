@@ -1,15 +1,12 @@
-use std::{cell::RefCell, rc::Rc};
-
 use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
 use vtui::{events::KeyPress, input::KeyCode, prelude::*};
 
 #[component]
 fn CanvasDemo(c: &mut Component) -> Inner {
-    let offset = Rc::new(RefCell::new((0, 0)));
-    let offset_read = offset.clone();
+    let mut offset = c.state((0, 0));
 
     c.draw(move |canvas| {
-        let (ox, oy) = *offset_read.borrow();
+        let (ox, oy) = *offset.read();
 
         canvas.set_offset(ox, oy);
         let block = Block::new()
@@ -25,7 +22,7 @@ fn CanvasDemo(c: &mut Component) -> Inner {
     });
 
     c.listen::<KeyPress>(move |event| {
-        let mut offset = offset.borrow_mut();
+        let mut offset = offset.write();
 
         if event.key == KeyCode::Down {
             offset.1 += 1;
