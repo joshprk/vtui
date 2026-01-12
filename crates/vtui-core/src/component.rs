@@ -23,7 +23,7 @@ impl Component {
 }
 
 impl Component {
-    pub fn with_factory(factory: FactoryFn) -> Self {
+    pub(crate) fn with_factory(factory: FactoryFn) -> Self {
         let mut component = Component::default();
         let inner = factory(&mut component);
         component.set_inner(inner);

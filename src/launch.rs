@@ -1,10 +1,7 @@
 use std::io;
 
 use vtui_core::{
-    component::{Component, FactoryFn},
-    driver::Driver,
-    error::RuntimeError,
-    runtime::Runtime,
+    component::FactoryFn, driver::Driver, error::RuntimeError, runtime::Runtime,
     transport::EventSource,
 };
 
@@ -15,14 +12,13 @@ pub struct LaunchBuilder {}
 
 impl LaunchBuilder {
     pub fn launch(self, factory: FactoryFn) -> Result<(), RuntimeError> {
-        let root = Component::with_factory(factory);
         let source = EventSource::new();
         let mut driver = CrosstermDriver::new(io::stdout());
 
         source.subscribe(&mut driver);
         driver.setup()?;
 
-        let mut runtime = Runtime::new(root, source);
+        let mut runtime = Runtime::new(factory, source);
 
         loop {
             runtime.draw(&mut driver)?;

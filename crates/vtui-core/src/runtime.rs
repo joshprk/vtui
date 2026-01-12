@@ -3,7 +3,11 @@ use std::time::{Duration, Instant};
 use ratatui::prelude::Backend;
 
 use crate::{
-    canvas::Canvas, component::Component, context::Context, driver::Driver, error::RuntimeError,
+    canvas::Canvas,
+    component::{Component, FactoryFn},
+    context::Context,
+    driver::Driver,
+    error::RuntimeError,
     transport::EventSource,
 };
 
@@ -14,8 +18,10 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    pub fn new(root: Component, source: EventSource) -> Self {
+    pub fn new(factory: FactoryFn, source: EventSource) -> Self {
+        let root = Component::with_factory(factory);
         let context = Context::default();
+
         Self {
             root,
             context,
