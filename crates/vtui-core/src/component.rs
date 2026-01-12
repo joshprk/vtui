@@ -2,7 +2,8 @@ use crate::{
     canvas::Canvas,
     context::{Context, EventContext},
     events::{Event, Message},
-    listeners::{DrawListener, ListenerStore}, state::{State, StateOwner},
+    listeners::{DrawListener, ListenerStore},
+    state::{State, StateOwner},
 };
 
 pub type FactoryFn = fn(&mut Component) -> Inner;

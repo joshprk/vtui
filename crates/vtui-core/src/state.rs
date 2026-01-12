@@ -1,6 +1,8 @@
 use std::cell::{Ref, RefMut};
 
-use generational_box::{AnyStorage, GenerationalBox, GenerationalRef, GenerationalRefMut, Owner, UnsyncStorage};
+use generational_box::{
+    AnyStorage, GenerationalBox, GenerationalRef, GenerationalRefMut, Owner, UnsyncStorage,
+};
 
 #[derive(Default)]
 pub(crate) struct StateOwner {
