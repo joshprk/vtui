@@ -19,7 +19,7 @@ impl LaunchBuilder {
         let source = EventSource::new();
         let mut driver = CrosstermDriver::new(io::stdout());
 
-        source.subscribe(&driver);
+        source.subscribe(&mut driver);
         driver.setup()?;
 
         let mut runtime = Runtime::new(root, source);

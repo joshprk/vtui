@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::{io::{self, Write}, thread::JoinHandle};
 
 use crossterm::{
     event::{
@@ -62,19 +62,21 @@ impl<W: Write> Driver for CrosstermDriver<W> {
 }
 
 impl<W: Write> EventProducer for CrosstermDriver<W> {
-    fn subscribe(tx: EventSink) {
-        loop {
-            let event = crossterm::event::read().expect("crossterm::event::read failed");
+    fn spawn(&mut self, tx: EventSink) -> JoinHandle<()> {
+        std::thread::spawn(move || {
+            loop {
+                let event = crossterm::event::read().expect("crossterm::event::read failed");
 
-            let msg = match normalize_input(event) {
-                Some(input) => input.to_message(),
-                None => continue,
-            };
+                let msg = match normalize_input(event) {
+                    Some(input) => input.to_message(),
+                    None => continue,
+                };
 
-            if tx.send(msg).is_err() {
-                break;
+                if tx.send(msg).is_err() {
+                    break;
+                }
             }
-        }
+        })
     }
 }
 

@@ -1,6 +1,5 @@
 use std::{
-    sync::mpsc::{Receiver, Sender},
-    time::Duration,
+    sync::mpsc::{Receiver, Sender}, thread::JoinHandle, time::Duration
 };
 
 use crate::{error::SendError, events::Message};
@@ -22,7 +21,7 @@ impl EventSource {
         Self::default()
     }
 
-    pub fn subscribe(&self, producer: &impl EventProducer) {
+    pub fn subscribe(&self, producer: &mut impl EventProducer) {
         let sink = EventSink(self.tx.clone());
         producer.spawn(sink);
     }
@@ -46,11 +45,5 @@ impl EventSink {
 }
 
 pub trait EventProducer {
-    fn subscribe(tx: EventSink);
-
-    fn spawn(&self, tx: EventSink) {
-        std::thread::spawn(move || {
-            Self::subscribe(tx);
-        });
-    }
+    fn spawn(&mut self, tx: EventSink) -> JoinHandle<()>;
 }
