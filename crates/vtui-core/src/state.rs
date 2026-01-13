@@ -16,10 +16,18 @@ impl StateOwner {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub struct State<T> {
     inner: GenerationalBox<T>,
 }
+
+impl<T> Clone for State<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for State<T> {}
 
 impl<T: 'static> State<T> {
     pub fn read(&self) -> GenerationalRef<Ref<'_, T>> {
