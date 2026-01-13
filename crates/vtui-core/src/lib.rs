@@ -2,6 +2,7 @@ pub(crate) mod arena;
 pub(crate) mod listeners;
 
 pub mod canvas;
+pub mod channels;
 pub mod component;
 pub mod context;
 pub mod driver;

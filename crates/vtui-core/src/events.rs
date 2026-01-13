@@ -21,6 +21,12 @@ pub struct Tick {}
 
 impl Event for Tick {}
 
+pub struct ChannelRecv<T: Send + 'static> {
+    pub data: T,
+}
+
+impl<T: Send + 'static> Event for ChannelRecv<T> {}
+
 pub struct MouseDown {
     pub x: u16,
     pub y: u16,
