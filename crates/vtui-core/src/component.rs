@@ -1,7 +1,7 @@
 use crate::{
     canvas::Canvas,
-    context::{Context, EventContext},
-    events::{Event, Message},
+    context::EventContext,
+    events::Event,
     listeners::{DrawListener, ListenerStore},
     state::{State, StateOwner},
 };
@@ -17,17 +17,19 @@ pub struct Component {
 }
 
 impl Component {
-    fn set_inner(&mut self, inner: Inner) {
-        self.inner = inner;
-    }
-}
-
-impl Component {
     pub(crate) fn with_factory(factory: FactoryFn) -> Self {
         let mut component = Component::default();
         let inner = factory(&mut component);
         component.inner = inner;
         component
+    }
+
+    pub(crate) fn renderer(&self) -> Option<&DrawListener> {
+        self.renderer.as_ref()
+    }
+
+    pub(crate) fn listeners(&mut self) -> &mut ListenerStore {
+        &mut self.listeners
     }
 
     pub fn draw(&mut self, listener: impl Fn(&mut Canvas) + 'static) {
@@ -40,20 +42,6 @@ impl Component {
 
     pub fn state<T: 'static>(&self, value: T) -> State<T> {
         self.state.insert(value)
-    }
-}
-
-impl Component {
-    pub(crate) fn render(&self, ctx: &mut Canvas) {
-        if let Some(ref draw) = self.renderer {
-            draw(ctx);
-        }
-    }
-
-    pub(crate) fn update(&mut self, msg: &Message, ctx: &mut Context) {
-        if let Some(listeners) = self.listeners.get_mut(msg) {
-            listeners.dispatch(msg, ctx);
-        }
     }
 }
 

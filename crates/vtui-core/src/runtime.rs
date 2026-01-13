@@ -9,6 +9,7 @@ use crate::{
     context::Context,
     driver::Driver,
     error::RuntimeError,
+    events::Message,
     transport::EventSource,
 };
 
@@ -42,7 +43,9 @@ impl Runtime {
             let mut canvas = Canvas::new(f.area(), f.buffer_mut());
 
             for component in self.arena.iter_draw() {
-                component.render(&mut canvas);
+                if let Some(draw_fn) = component.renderer() {
+                    draw_fn(&mut canvas);
+                }
             }
         })?;
 
@@ -53,18 +56,30 @@ impl Runtime {
         let deadline = Instant::now() + Duration::from_millis(16);
         let msg = self.source.recv();
 
-        self.arena.update(&msg, &mut self.context);
+        self.dispatch(&msg);
 
         while Instant::now() < deadline {
             let msg = self.source.recv_timeout(deadline - Instant::now());
 
             if let Some(msg) = msg {
-                self.arena.update(&msg, &mut self.context);
+                self.dispatch(&msg);
             }
         }
     }
 
     pub fn should_exit(&self) -> bool {
         self.context.shutdown_requested
+    }
+}
+
+impl Runtime {
+    fn dispatch(&mut self, message: &Message) {
+        for component in self.arena.iter_update() {
+            let listeners = component.listeners();
+
+            if let Some(listeners) = listeners.get_mut(message) {
+                listeners.dispatch(message, &mut self.context);
+            }
+        }
     }
 }

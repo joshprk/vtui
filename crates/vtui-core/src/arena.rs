@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use crate::{component::Component, context::Context, events::Message};
+use crate::component::Component;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct ComponentId(usize);
@@ -45,9 +45,7 @@ impl Arena {
         self.inner.iter()
     }
 
-    pub fn update(&mut self, msg: &Message, ctx: &mut Context) {
-        for component in self.inner.iter_mut() {
-            component.update(msg, ctx);
-        }
+    pub fn iter_update(&mut self) -> impl Iterator<Item = &mut Component> {
+        self.inner.iter_mut()
     }
 }
