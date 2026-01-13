@@ -33,7 +33,7 @@ fn CanvasDemo(c: &mut Component) -> Inner {
         }
     });
 
-    Inner::default()
+    vtui! {}
 }
 
 fn main() {

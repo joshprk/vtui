@@ -47,7 +47,7 @@ fn App(c: &mut Component) -> Inner {
         }
     });
 
-    Inner::default()
+    vtui! {}
 }
 
 fn main() {

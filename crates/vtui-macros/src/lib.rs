@@ -79,3 +79,11 @@ pub fn component(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     expanded.into()
 }
+
+#[proc_macro]
+pub fn vtui(_input: TokenStream) -> TokenStream {
+    let expanded = quote! {
+        Inner::default()
+    };
+    expanded.into()
+}

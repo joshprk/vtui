@@ -15,7 +15,7 @@ pub mod prelude {
         component::{Component, Inner},
         driver::Driver,
     };
-    pub use vtui_macros::component;
+    pub use vtui_macros::{component, vtui};
 }
 
 #[cfg(not(any(feature = "crossterm")))]
