@@ -1,6 +1,9 @@
 use std::ops::Deref;
 
-use crate::events::Event;
+use crate::{
+    channels::{ChannelSender, ChannelSink, spawn_blocking_task},
+    events::Event,
+};
 
 pub struct EventContext<'rt, E: Event> {
     event: &'rt E,
@@ -22,6 +25,14 @@ impl<'rt, E: Event> EventContext<'rt, E> {
 
     pub fn request_shutdown(&mut self) {
         self.context.shutdown_requested = true;
+    }
+
+    pub fn spawn_blocking<T: Send + 'static>(
+        &mut self,
+        sender: ChannelSender<T>,
+        closure: impl FnOnce(ChannelSink<T>) + Send + 'static,
+    ) {
+        spawn_blocking_task(self.context, sender, closure);
     }
 }
 

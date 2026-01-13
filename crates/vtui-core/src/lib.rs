@@ -1,4 +1,5 @@
 pub mod canvas;
+pub mod channels;
 pub mod component;
 pub mod context;
 pub mod driver;
