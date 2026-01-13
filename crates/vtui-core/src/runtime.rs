@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 use ratatui::prelude::Backend;
 
 use crate::{
+    arena::Arena,
     canvas::Canvas,
     component::{Component, FactoryFn},
     context::Context,
@@ -12,18 +13,19 @@ use crate::{
 };
 
 pub struct Runtime {
-    root: Component,
+    arena: Arena,
     context: Context,
     source: EventSource,
 }
 
 impl Runtime {
     pub fn new(factory: FactoryFn, source: EventSource) -> Self {
-        let root = Component::with_factory(factory);
         let context = Context::default();
+        let root = Component::with_factory(factory);
+        let arena = Arena::new(root);
 
         Self {
-            root,
+            arena,
             context,
             source,
         }
@@ -35,10 +37,15 @@ impl Runtime {
         RuntimeError: From<<D::Backend as Backend>::Error>,
     {
         let terminal = driver.terminal();
+
         terminal.draw(|f| {
             let mut canvas = Canvas::new(f.area(), f.buffer_mut());
-            self.root.render(&mut canvas);
+
+            for component in self.arena.iter_draw() {
+                component.render(&mut canvas);
+            }
         })?;
+
         Ok(())
     }
 
@@ -46,12 +53,13 @@ impl Runtime {
         let deadline = Instant::now() + Duration::from_millis(16);
         let msg = self.source.recv();
 
-        self.root.update(&msg, &mut self.context);
+        self.arena.update(&msg, &mut self.context);
 
         while Instant::now() < deadline {
             let msg = self.source.recv_timeout(deadline - Instant::now());
+
             if let Some(msg) = msg {
-                self.root.update(&msg, &mut self.context);
+                self.arena.update(&msg, &mut self.context);
             }
         }
     }
