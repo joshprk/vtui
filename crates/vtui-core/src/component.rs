@@ -10,9 +10,9 @@ pub type FactoryFn = fn(&mut Component) -> Inner;
 
 #[derive(Default)]
 pub struct Component {
-    draw_listener: Option<DrawListener>,
+    renderer: Option<DrawListener>,
     listeners: ListenerStore,
-    state_arena: StateOwner,
+    state: StateOwner,
     inner: Inner,
 }
 
@@ -26,12 +26,12 @@ impl Component {
     pub(crate) fn with_factory(factory: FactoryFn) -> Self {
         let mut component = Component::default();
         let inner = factory(&mut component);
-        component.set_inner(inner);
+        component.inner = inner;
         component
     }
 
     pub fn draw(&mut self, listener: impl Fn(&mut Canvas) + 'static) {
-        self.draw_listener = Some(Box::new(listener));
+        self.renderer = Some(Box::new(listener));
     }
 
     pub fn listen<E: Event>(&mut self, listener: impl FnMut(&mut EventContext<E>) + 'static) {
@@ -39,14 +39,14 @@ impl Component {
     }
 
     pub fn state<T: 'static>(&self, value: T) -> State<T> {
-        self.state_arena.insert(value)
+        self.state.insert(value)
     }
 }
 
 impl Component {
     pub(crate) fn render(&self, ctx: &mut Canvas) {
-        if let Some(ref draw_listener) = self.draw_listener {
-            draw_listener(ctx)
+        if let Some(ref draw) = self.renderer {
+            draw(ctx);
         }
     }
 
