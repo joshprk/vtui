@@ -6,7 +6,11 @@ use crate::{
     state::{State, StateOwner},
 };
 
-pub type FactoryFn = fn(&mut Component) -> Inner;
+pub type FactoryFn<P> = fn(&mut Component, P) -> Inner;
+
+pub trait Props: 'static {}
+
+impl Props for () {}
 
 #[derive(Default)]
 pub struct Component {
@@ -17,9 +21,9 @@ pub struct Component {
 }
 
 impl Component {
-    pub(crate) fn with_factory(factory: FactoryFn) -> Self {
+    pub(crate) fn with_factory<P: Props>(factory: FactoryFn<P>, props: P) -> Self {
         let mut component = Component::default();
-        let inner = factory(&mut component);
+        let inner = factory(&mut component, props);
         component.inner = inner;
         component
     }
