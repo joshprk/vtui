@@ -35,9 +35,10 @@ fn validate_props_type(ty: &syn::Type) -> syn::Result<()> {
     match ty {
         syn::Type::Path(p)
             if p.qself.is_none()
-                && p.path.segments.iter().all(|seg| {
-                    matches!(seg.arguments, syn::PathArguments::None)
-                }) =>
+                && p.path
+                    .segments
+                    .iter()
+                    .all(|seg| matches!(seg.arguments, syn::PathArguments::None)) =>
         {
             Ok(())
         }
