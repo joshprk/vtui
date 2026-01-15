@@ -65,9 +65,7 @@ impl Inner {
     }
 
     pub fn push_child<P: Props>(&mut self, factory: FactoryFn<P>, props: P) {
-        let child = Child::new(move || {
-            Component::with_factory(factory, props.clone())
-        });
+        let child = Child::new(move || Component::with_factory(factory, props.clone()));
 
         self.children.push(child)
     }
