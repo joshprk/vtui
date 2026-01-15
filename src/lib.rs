@@ -1,3 +1,4 @@
+pub use vtui_core::canvas;
 pub use vtui_core::events;
 pub use vtui_core::input;
 pub use vtui_core::runtime;
