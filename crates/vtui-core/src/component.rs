@@ -7,8 +7,9 @@ use crate::{
 };
 
 pub type FactoryFn<P> = fn(&mut Component, P) -> Inner;
+pub(crate) type MountFn = Box<dyn Fn() -> Component>;
 
-pub trait Props: 'static {}
+pub trait Props: Clone + 'static {}
 
 impl Props for () {}
 
@@ -36,6 +37,10 @@ impl Component {
         &mut self.listeners
     }
 
+    pub(crate) fn inner(&self) -> &Inner {
+        &self.inner
+    }
+
     pub fn draw(&mut self, listener: impl Fn(&mut Canvas) + 'static) {
         self.renderer = Some(Box::new(listener));
     }
@@ -50,4 +55,32 @@ impl Component {
 }
 
 #[derive(Default)]
-pub struct Inner {}
+pub struct Inner {
+    children: Vec<Child>,
+}
+
+impl Inner {
+    pub(crate) fn iter_child(&self) -> impl Iterator<Item = &Child> {
+        self.children.iter()
+    }
+
+    pub fn push_child<P: Props>(&mut self, factory: FactoryFn<P>, props: P) {
+        let child = Child::new(move || {
+            Component::with_factory(factory, props.clone())
+        });
+
+        self.children.push(child)
+    }
+}
+
+pub(crate) struct Child(MountFn);
+
+impl Child {
+    pub(crate) fn new(mount: impl Fn() -> Component + 'static) -> Self {
+        Self(Box::new(mount))
+    }
+
+    pub(crate) fn mount(&self) -> Component {
+        (self.0)()
+    }
+}

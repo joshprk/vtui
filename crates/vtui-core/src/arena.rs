@@ -20,6 +20,7 @@ impl From<usize> for ComponentId {
 
 pub(crate) struct Arena {
     inner: Vec<Component>,
+    parents: Vec<ComponentId>,
 }
 
 impl Index<ComponentId> for Arena {
@@ -38,7 +39,34 @@ impl IndexMut<ComponentId> for Arena {
 
 impl Arena {
     pub fn new(root: Component) -> Self {
-        Self { inner: vec![root] }
+        let mut arena = Self {
+            inner: Vec::default(),
+            parents: Vec::default(),
+        };
+
+        arena.push(root, None);
+        arena
+    }
+
+    pub fn push(&mut self, component: Component, parent: Option<ComponentId>) {
+        let id = ComponentId(self.inner.len());
+        let parent_id = match parent {
+            Some(parent_id) => parent_id,
+            None => id,
+        };
+
+        self.inner.push(component);
+        self.parents.push(parent_id);
+
+        let children = self[id]
+            .inner()
+            .iter_child()
+            .map(|c| c.mount())
+            .collect::<Vec<Component>>();
+
+        for child in children {
+            self.push(child, Some(id));
+        }
     }
 
     pub fn iter_draw(&self) -> impl Iterator<Item = &Component> {
