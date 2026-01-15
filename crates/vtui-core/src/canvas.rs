@@ -100,13 +100,13 @@ impl LogicalRect {
 
 pub struct Canvas<'a> {
     buf: &'a mut Buffer,
-    rect: Rect,
+    rect: LogicalRect,
     offset_x: i32,
     offset_y: i32,
 }
 
 impl<'a> Canvas<'a> {
-    pub fn new(rect: Rect, buf: &'a mut Buffer) -> Self {
+    pub fn new(rect: LogicalRect, buf: &'a mut Buffer) -> Self {
         Self {
             rect,
             buf,
@@ -126,8 +126,7 @@ impl Canvas<'_> {
             let inner = LogicalRect::from(self.buf.area);
 
             if self.clipped() {
-                let canvas_area = LogicalRect::from(self.rect);
-                inner.intersection(canvas_area)
+                inner.intersection(self.rect)
             } else {
                 inner
             }
@@ -216,10 +215,9 @@ impl Canvas<'_> {
     }
 
     pub fn render_widget(&mut self, rect: LogicalRect, widget: impl Widget) {
-        let canvas_area = self.rect.into();
         let rect = rect.with_offset(self.offset_x, self.offset_y);
 
-        if !rect.intersects(canvas_area) {
+        if !rect.intersects(self.rect) {
             return;
         }
 
@@ -233,7 +231,7 @@ impl Canvas<'_> {
         let mut temp_buf = Buffer::empty(temp_rect);
         widget.render(temp_rect, &mut temp_buf);
 
-        let clip = rect.intersection(canvas_area);
+        let clip = rect.intersection(self.rect);
 
         // Source origin inside temp buffer
         let src_x0 = (clip.x - rect.x) as usize;

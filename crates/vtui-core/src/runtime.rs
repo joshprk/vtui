@@ -40,7 +40,7 @@ impl Runtime {
         let terminal = driver.terminal();
 
         terminal.draw(|f| {
-            let mut canvas = Canvas::new(f.area(), f.buffer_mut());
+            let mut canvas = Canvas::new(f.area().into(), f.buffer_mut());
 
             for component in self.arena.iter_draw() {
                 if let Some(draw_fn) = component.renderer() {
