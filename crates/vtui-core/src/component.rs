@@ -6,7 +6,12 @@ use crate::{
     state::{State, StateOwner},
 };
 
-pub type FactoryFn = fn(&mut Component) -> Inner;
+pub type FactoryFn<P> = fn(&mut Component, P) -> Inner;
+pub(crate) type MountFn = Box<dyn Fn() -> Component>;
+
+pub trait Props: Clone + 'static {}
+
+impl Props for () {}
 
 #[derive(Default)]
 pub struct Component {
@@ -17,9 +22,9 @@ pub struct Component {
 }
 
 impl Component {
-    pub(crate) fn with_factory(factory: FactoryFn) -> Self {
+    pub(crate) fn with_factory<P: Props>(factory: FactoryFn<P>, props: P) -> Self {
         let mut component = Component::default();
-        let inner = factory(&mut component);
+        let inner = factory(&mut component, props);
         component.inner = inner;
         component
     }
@@ -30,6 +35,10 @@ impl Component {
 
     pub(crate) fn listeners(&mut self) -> &mut ListenerStore {
         &mut self.listeners
+    }
+
+    pub(crate) fn inner(&self) -> &Inner {
+        &self.inner
     }
 
     pub fn draw(&mut self, listener: impl Fn(&mut Canvas) + 'static) {
@@ -46,4 +55,30 @@ impl Component {
 }
 
 #[derive(Default)]
-pub struct Inner {}
+pub struct Inner {
+    children: Vec<Child>,
+}
+
+impl Inner {
+    pub(crate) fn iter_child(&self) -> impl Iterator<Item = &Child> {
+        self.children.iter()
+    }
+
+    pub fn push_child<P: Props>(&mut self, factory: FactoryFn<P>, props: P) {
+        let child = Child::new(move || Component::with_factory(factory, props.clone()));
+
+        self.children.push(child)
+    }
+}
+
+pub(crate) struct Child(MountFn);
+
+impl Child {
+    pub(crate) fn new(mount: impl Fn() -> Component + 'static) -> Self {
+        Self(Box::new(mount))
+    }
+
+    pub(crate) fn mount(&self) -> Component {
+        (self.0)()
+    }
+}

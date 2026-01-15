@@ -12,7 +12,7 @@ mod launch;
 pub mod prelude {
     pub use vtui_core::{
         canvas::LogicalRect,
-        component::{Component, Inner},
+        component::{Component, Inner, Props},
         driver::Driver,
     };
     pub use vtui_macros::{component, vtui};

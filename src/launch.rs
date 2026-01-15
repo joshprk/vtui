@@ -11,7 +11,7 @@ use crate::drivers::CrosstermDriver;
 pub struct LaunchBuilder {}
 
 impl LaunchBuilder {
-    pub fn launch(self, factory: FactoryFn) -> Result<(), RuntimeError> {
+    pub fn launch(self, factory: FactoryFn<()>) -> Result<(), RuntimeError> {
         let source = EventSource::new();
         let mut driver = CrosstermDriver::new(io::stdout());
 
@@ -34,6 +34,6 @@ impl LaunchBuilder {
     }
 }
 
-pub fn launch(app: FactoryFn) {
+pub fn launch(app: FactoryFn<()>) {
     LaunchBuilder::default().launch(app).unwrap()
 }

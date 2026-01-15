@@ -20,9 +20,9 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    pub fn new(factory: FactoryFn, source: EventSource) -> Self {
+    pub fn new(factory: FactoryFn<()>, source: EventSource) -> Self {
         let context = Context::default();
-        let root = Component::with_factory(factory);
+        let root = Component::with_factory(factory, ());
         let arena = Arena::new(root);
 
         Self {
