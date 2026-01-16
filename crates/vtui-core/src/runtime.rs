@@ -5,7 +5,7 @@ use ratatui::prelude::Backend;
 use crate::{
     arena::Arena,
     canvas::Canvas,
-    component::{Component, FactoryFn},
+    component::{FactoryFn, Node},
     context::Context,
     driver::Driver,
     error::RuntimeError,
@@ -22,7 +22,7 @@ pub struct Runtime {
 impl Runtime {
     pub fn new(factory: FactoryFn<()>, source: EventSource) -> Self {
         let context = Context::default();
-        let root = Component::with_factory(factory, ());
+        let root = Node::from_factory(factory, ());
         let arena = Arena::new(root);
 
         Self {
@@ -40,11 +40,9 @@ impl Runtime {
         let terminal = driver.terminal();
 
         terminal.draw(|f| {
-            for component in self.arena.iter_draw() {
-                let mut canvas = Canvas::new(f.area().into(), f.buffer_mut());
-                if let Some(draw_fn) = component.renderer() {
-                    draw_fn(&mut canvas);
-                }
+            for node in self.arena.iter_draw() {
+                let canvas = Canvas::new(f.area().into(), f.buffer_mut());
+                node.render(canvas);
             }
         })?;
 
@@ -72,13 +70,9 @@ impl Runtime {
 }
 
 impl Runtime {
-    fn dispatch(&mut self, message: &Message) {
-        for component in self.arena.iter_update() {
-            let listeners = component.listeners();
-
-            if let Some(listeners) = listeners.get_mut(message) {
-                listeners.dispatch(message, &mut self.context);
-            }
+    fn dispatch(&mut self, msg: &Message) {
+        for node in self.arena.iter_update() {
+            node.dispatch(msg, &mut self.context);
         }
     }
 }

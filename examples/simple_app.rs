@@ -2,7 +2,7 @@ use ratatui::style::Style;
 use vtui::{events::*, input::*, prelude::*};
 
 #[component]
-fn App(c: &mut Component) -> Inner {
+fn App(c: Component) -> Node {
     let mut clicks = c.state(0);
 
     c.draw(move |canvas| {

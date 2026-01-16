@@ -2,7 +2,7 @@ use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
 use vtui::{events::KeyPress, input::KeyCode, prelude::*};
 
 #[component]
-fn CanvasDemo(c: &mut Component) -> Inner {
+fn CanvasDemo(c: Component) -> Node {
     let mut offset = c.state((0, 0));
 
     c.draw(move |canvas| {

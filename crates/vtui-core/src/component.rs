@@ -1,84 +1,103 @@
+use std::{
+    cell::{RefCell, RefMut},
+    rc::Rc,
+};
+
 use crate::{
     canvas::Canvas,
-    context::EventContext,
-    events::Event,
+    context::{Context, EventContext},
+    events::{Event, Message},
     listeners::{DrawListener, ListenerStore},
     state::{State, StateOwner},
 };
 
-pub type FactoryFn<P> = fn(&mut Component, P) -> Inner;
-pub(crate) type MountFn = Box<dyn Fn() -> Component>;
+pub type FactoryFn<P> = fn(Component, P) -> Node;
 
 pub trait Props: Clone + 'static {}
 
 impl Props for () {}
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Component {
-    renderer: Option<DrawListener>,
-    listeners: ListenerStore,
-    state: StateOwner,
-    inner: Inner,
+    inner: Rc<RefCell<Spec>>,
 }
 
 impl Component {
-    pub(crate) fn with_factory<P: Props>(factory: FactoryFn<P>, props: P) -> Self {
-        let mut component = Component::default();
-        let inner = factory(&mut component, props);
-        component.inner = inner;
-        component
+    fn get_inner_mut(&self) -> RefMut<'_, Spec> {
+        self.inner.borrow_mut()
+    }
+}
+
+impl Component {
+    pub fn draw(&self, listener: impl Fn(&mut Canvas) + 'static) {
+        self.get_inner_mut().renderer = Some(Box::new(listener));
     }
 
-    pub(crate) fn renderer(&self) -> Option<&DrawListener> {
-        self.renderer.as_ref()
-    }
-
-    pub(crate) fn listeners(&mut self) -> &mut ListenerStore {
-        &mut self.listeners
-    }
-
-    pub(crate) fn inner(&self) -> &Inner {
-        &self.inner
-    }
-
-    pub fn draw(&mut self, listener: impl Fn(&mut Canvas) + 'static) {
-        self.renderer = Some(Box::new(listener));
-    }
-
-    pub fn listen<E: Event>(&mut self, listener: impl FnMut(&mut EventContext<E>) + 'static) {
-        self.listeners.push(Box::new(listener))
+    pub fn listen<E: Event>(&self, listener: impl FnMut(&mut EventContext<E>) + 'static) {
+        self.get_inner_mut().listeners.push(Box::new(listener));
     }
 
     pub fn state<T: 'static>(&self, value: T) -> State<T> {
-        self.state.insert(value)
+        self.get_inner_mut().state.insert(value)
     }
 }
 
 #[derive(Default)]
-pub struct Inner {
+pub(crate) struct Spec {
+    pub renderer: Option<DrawListener>,
+    pub listeners: ListenerStore,
+    pub state: StateOwner,
+}
+
+pub struct Node {
+    spec: Spec,
     children: Vec<Child>,
 }
 
-impl Inner {
-    pub(crate) fn iter_child(&self) -> impl Iterator<Item = &Child> {
-        self.children.iter()
-    }
+impl TryFrom<Component> for Node {
+    type Error = Component;
 
-    pub fn push_child<P: Props>(&mut self, factory: FactoryFn<P>, props: P) {
-        let child = Child::new(move || Component::with_factory(factory, props.clone()));
+    fn try_from(value: Component) -> Result<Self, Self::Error> {
+        let Component { inner } = value;
 
-        self.children.push(child)
+        match Rc::try_unwrap(inner) {
+            Ok(spec) => Ok(Self {
+                spec: spec.into_inner(),
+                children: Vec::default(),
+            }),
+            Err(inner) => Err(Component { inner }),
+        }
     }
 }
 
-pub(crate) struct Child(MountFn);
-
-impl Child {
-    pub(crate) fn new(mount: impl Fn() -> Component + 'static) -> Self {
-        Self(Box::new(mount))
+impl Node {
+    pub fn from_component(value: Component) -> Result<Self, Component> {
+        Self::try_from(value)
     }
 
-    pub(crate) fn mount(&self) -> Component {
-        (self.0)()
+    pub fn from_factory<P: Props>(factory: FactoryFn<P>, props: P) -> Self {
+        factory(Component::default(), props)
     }
+
+    pub fn add_static_child<P: Props>(&mut self, factory: FactoryFn<P>, props: P) {
+        let factory = Box::new(move || Node::from_factory(factory, props.clone()));
+
+        self.children.push(Child::Static(factory))
+    }
+
+    pub(crate) fn render(&self, mut canvas: Canvas) {
+        if let Some(renderer) = &self.spec.renderer {
+            renderer(&mut canvas);
+        }
+    }
+
+    pub(crate) fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
+        if let Some(listeners) = self.spec.listeners.get_mut(msg) {
+            listeners.dispatch(msg, ctx);
+        }
+    }
+}
+
+pub enum Child {
+    Static(Box<dyn Fn() -> Node>),
 }
