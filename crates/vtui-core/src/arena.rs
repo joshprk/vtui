@@ -19,12 +19,12 @@ impl From<usize> for ComponentId {
 }
 
 pub(crate) struct Arena {
-    inner: Vec<Component>,
-    parents: Vec<ComponentId>,
+    root: ComponentId,
+    inner: Vec<ComponentNode>,
 }
 
 impl Index<ComponentId> for Arena {
-    type Output = Component;
+    type Output = ComponentNode;
 
     fn index(&self, index: ComponentId) -> &Self::Output {
         &self.inner[index.index()]
@@ -40,8 +40,8 @@ impl IndexMut<ComponentId> for Arena {
 impl Arena {
     pub fn new(root: Component) -> Self {
         let mut arena = Self {
+            root: ComponentId(0),
             inner: Vec::default(),
-            parents: Vec::default(),
         };
 
         arena.push(root, None);
@@ -50,30 +50,40 @@ impl Arena {
 
     pub fn push(&mut self, component: Component, parent: Option<ComponentId>) {
         let id = ComponentId(self.inner.len());
-        let parent_id = match parent {
-            Some(parent_id) => parent_id,
-            None => id,
+
+        let node = ComponentNode {
+            component,
+            parent,
+            children: Vec::default(),
         };
 
-        self.inner.push(component);
-        self.parents.push(parent_id);
+        self.inner.push(node);
 
         let children = self[id]
+            .component
             .inner()
             .iter_child()
             .map(|c| c.mount())
             .collect::<Vec<Component>>();
 
         for child in children {
+            let next_id = ComponentId(self.inner.len());
             self.push(child, Some(id));
+            self[id].children.push(next_id);
         }
     }
 
     pub fn iter_draw(&self) -> impl Iterator<Item = &Component> {
-        self.inner.iter()
+        self.inner.iter().map(|n| &n.component)
     }
 
     pub fn iter_update(&mut self) -> impl Iterator<Item = &mut Component> {
-        self.inner.iter_mut()
+        self.inner.iter_mut().map(|n| &mut n.component)
     }
+}
+
+pub(crate) struct ComponentNode {
+    pub component: Component,
+    pub parent: Option<ComponentId>,
+    pub children: Vec<ComponentId>,
 }
