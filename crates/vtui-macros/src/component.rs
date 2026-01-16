@@ -12,7 +12,7 @@ pub(crate) fn is_component_type(ty: &Type) -> bool {
         Type::Path(TypePath { qself: None, path }) => path
             .segments
             .last()
-            .map_or(false, |seg| seg.ident == COMPONENT_TYPE_IDENT),
+            .is_some_and(|seg| seg.ident == COMPONENT_TYPE_IDENT),
         _ => false,
     }
 }
@@ -23,7 +23,7 @@ pub(crate) fn is_node_type(ty: &Type) -> bool {
         Type::Path(TypePath { qself: None, path }) => path
             .segments
             .last()
-            .map_or(false, |seg| seg.ident == NODE_TYPE_IDENT),
+            .is_some_and(|seg| seg.ident == NODE_TYPE_IDENT),
         _ => false,
     }
 }
