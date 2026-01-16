@@ -52,6 +52,7 @@ pub(crate) struct Spec {
 pub struct Node {
     spec: Spec,
     children: Vec<Child>,
+    pub z_index: i32,
 }
 
 impl TryFrom<Component> for Node {
@@ -64,6 +65,7 @@ impl TryFrom<Component> for Node {
             Ok(spec) => Ok(Self {
                 spec: spec.into_inner(),
                 children: Vec::default(),
+                z_index: 0,
             }),
             Err(inner) => Err(Component { inner }),
         }
@@ -95,6 +97,10 @@ impl Node {
         if let Some(listeners) = self.spec.listeners.get_mut(msg) {
             listeners.dispatch(msg, ctx);
         }
+    }
+
+    pub(crate) fn iter_children(&self) -> impl Iterator<Item = &Child> {
+        self.children.iter()
     }
 }
 

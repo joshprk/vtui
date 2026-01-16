@@ -40,7 +40,8 @@ impl Runtime {
         let terminal = driver.terminal();
 
         terminal.draw(|f| {
-            for node in self.arena.iter_draw() {
+            for node_id in self.arena.iter_draw() {
+                let node = &self.arena[node_id];
                 let canvas = Canvas::new(f.area().into(), f.buffer_mut());
                 node.render(canvas);
             }
@@ -71,7 +72,8 @@ impl Runtime {
 
 impl Runtime {
     fn dispatch(&mut self, msg: &Message) {
-        for node in self.arena.iter_update() {
+        for node_id in self.arena.iter_update() {
+            let node = &mut self.arena[node_id];
             node.dispatch(msg, &mut self.context);
         }
     }
