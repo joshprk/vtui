@@ -12,12 +12,7 @@ pub struct LogicalRect {
 
 impl From<Rect> for LogicalRect {
     fn from(value: Rect) -> Self {
-        Self {
-            x: value.x as i32,
-            y: value.y as i32,
-            width: value.width as i32,
-            height: value.height as i32,
-        }
+        Self::new(value.x as i32, value.y as i32, value.width, value.height)
     }
 }
 
