@@ -6,8 +6,9 @@ use std::{
 use crate::{
     canvas::Canvas,
     context::EventContext,
-    events::Event,
-    listeners::{DrawListener, ListenerStore},
+    events::{Event, Message},
+    layout::Layout,
+    listeners::{DrawListener, ErasedListenerBucket, ListenerStore},
     state::{State, StateOwner},
 };
 
@@ -50,8 +51,9 @@ pub(crate) struct Spec {
 }
 
 pub struct Node {
-    pub(crate) spec: Spec,
-    pub(crate) children: Vec<Child>,
+    spec: Spec,
+    children: Vec<Child>,
+    pub layout: Layout,
     pub z_index: i32,
 }
 
@@ -65,6 +67,7 @@ impl TryFrom<Component> for Node {
             Ok(spec) => Ok(Self {
                 spec: spec.into_inner(),
                 children: Vec::default(),
+                layout: Layout::default(),
                 z_index: 0,
             }),
             Err(inner) => Err(Component { inner }),
@@ -87,8 +90,19 @@ impl Node {
         self.children.push(Child::Static(factory))
     }
 
-    pub(crate) fn iter_children(&self) -> impl Iterator<Item = &Child> {
+    pub(crate) fn iter_children(&self) -> impl DoubleEndedIterator<Item = &Child> {
         self.children.iter()
+    }
+
+    pub(crate) fn get_renderer(&self) -> Option<&DrawListener> {
+        self.spec.renderer.as_ref()
+    }
+
+    pub(crate) fn get_listeners(
+        &mut self,
+        msg: &Message,
+    ) -> Option<&mut Box<dyn ErasedListenerBucket>> {
+        self.spec.listeners.get_mut(msg)
     }
 }
 

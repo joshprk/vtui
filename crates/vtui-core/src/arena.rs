@@ -62,7 +62,7 @@ impl Arena {
         }
     }
 
-    pub fn draw_for_each<F>(&mut self, mut draw_fn: F)
+    pub fn draw_for_each<F>(&self, mut draw_fn: F)
     where
         F: FnMut(&ArenaNode),
     {
@@ -89,15 +89,37 @@ impl Arena {
             (za, *a_ord).cmp(&(zb, *b_ord))
         });
 
-        self.compute_layout();
-
         for (id, _) in items {
             draw_fn(&self.inner[id]);
+        }
+    }
+
+    pub fn compute_layout(&mut self, rect: LogicalRect) {
+        for root_id in self.roots.clone() {
+            if let Some(root_node) = self.inner.get_mut(root_id) {
+                root_node.rect = rect;
+            }
+            self.compute_layout_recursive(rect, root_id);
         }
     }
 }
 
 impl Arena {
+    fn compute_layout_recursive(&mut self, rect: LogicalRect, node_id: NodeId) {
+        let (children_ids, rects) = {
+            let node = &self[node_id];
+            let children_ids = node.children.clone();
+            let children = children_ids.iter().map(|&id| &self[id]);
+            let rects = node.node.layout.split(rect, children);
+            (children_ids, rects)
+        };
+
+        for (child_id, child_rect) in children_ids.into_iter().zip(rects) {
+            self[child_id].rect = child_rect;
+            self.compute_layout_recursive(child_rect, child_id);
+        }
+    }
+
     fn push(&mut self, node: Node, parent: Option<NodeId>) -> NodeId {
         let id = self.inner.insert(ArenaNode {
             node,
@@ -126,8 +148,6 @@ impl Arena {
 
         id
     }
-
-    fn compute_layout(&mut self) {}
 }
 
 pub(crate) struct ArenaNode {
@@ -140,14 +160,14 @@ pub(crate) struct ArenaNode {
 
 impl ArenaNode {
     pub(crate) fn render(&self, buffer: &mut Buffer) {
-        if let Some(renderer) = &self.node.spec.renderer {
+        if let Some(renderer) = &self.node.get_renderer() {
             let mut canvas = Canvas::new(self.rect, buffer);
             renderer(&mut canvas);
         }
     }
 
     pub(crate) fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
-        if let Some(listeners) = self.node.spec.listeners.get_mut(msg) {
+        if let Some(listeners) = self.node.get_listeners(msg) {
             listeners.dispatch(msg, ctx);
         }
     }
