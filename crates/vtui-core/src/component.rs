@@ -5,8 +5,8 @@ use std::{
 
 use crate::{
     canvas::Canvas,
-    context::{Context, EventContext},
-    events::{Event, Message},
+    context::EventContext,
+    events::Event,
     listeners::{DrawListener, ListenerStore},
     state::{State, StateOwner},
 };
@@ -50,8 +50,8 @@ pub(crate) struct Spec {
 }
 
 pub struct Node {
-    spec: Spec,
-    children: Vec<Child>,
+    pub(crate) spec: Spec,
+    pub(crate) children: Vec<Child>,
     pub z_index: i32,
 }
 
@@ -85,18 +85,6 @@ impl Node {
         let factory = Box::new(move || Node::from_factory(factory, props.clone()));
 
         self.children.push(Child::Static(factory))
-    }
-
-    pub(crate) fn render(&self, mut canvas: Canvas) {
-        if let Some(renderer) = &self.spec.renderer {
-            renderer(&mut canvas);
-        }
-    }
-
-    pub(crate) fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
-        if let Some(listeners) = self.spec.listeners.get_mut(msg) {
-            listeners.dispatch(msg, ctx);
-        }
     }
 
     pub(crate) fn iter_children(&self) -> impl Iterator<Item = &Child> {

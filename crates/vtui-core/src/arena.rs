@@ -1,10 +1,16 @@
 use std::ops::{Index, IndexMut};
 
+use ratatui::buffer::Buffer;
 use slotmap::{SlotMap, new_key_type};
 
-use crate::component::{Child, Node};
+use crate::{
+    canvas::Canvas,
+    component::{Child, Node},
+    context::Context,
+    events::Message,
+};
 
-new_key_type! { pub struct NodeId; }
+new_key_type! { struct NodeId; }
 
 #[derive(Default)]
 pub(crate) struct Arena {
@@ -33,29 +39,10 @@ impl Arena {
         arena
     }
 
-    pub fn iter_draw(&self) -> impl Iterator<Item = NodeId> {
-        let mut order = Vec::new();
-        let mut stack = Vec::new();
-
-        for &root in self.roots.iter().rev() {
-            stack.push(root);
-        }
-
-        while let Some(id) = stack.pop() {
-            order.push(id);
-
-            let children = &self.inner[id].children;
-            for &child in children.iter().rev() {
-                stack.push(child);
-            }
-        }
-
-        order.sort_by_key(|&id| self.inner[id].node.z_index);
-        order.into_iter()
-    }
-
-    pub fn iter_update(&mut self) -> impl Iterator<Item = NodeId> + use<> {
-        let mut out = Vec::new();
+    pub fn update_for_each<F>(&mut self, mut update_fn: F)
+    where
+        F: FnMut(&mut ArenaNode),
+    {
         let mut stack = Vec::new();
 
         for &root in self.roots.iter().rev() {
@@ -64,7 +51,8 @@ impl Arena {
 
         while let Some((id, visited)) = stack.pop() {
             if visited {
-                out.push(id);
+                let node = &mut self.inner[id];
+                update_fn(node);
             } else {
                 stack.push((id, true));
                 for &child in self.inner[id].children.iter().rev() {
@@ -72,8 +60,38 @@ impl Arena {
                 }
             }
         }
+    }
 
-        out.into_iter()
+    pub fn draw_for_each<F>(&mut self, mut draw_fn: F)
+    where
+        F: FnMut(&ArenaNode),
+    {
+        let mut items = Vec::new();
+        let mut stack = Vec::new();
+        let mut visit_index: u32 = 0;
+
+        for &root in self.roots.iter().rev() {
+            stack.push(root);
+        }
+
+        while let Some(id) = stack.pop() {
+            items.push((id, visit_index));
+            visit_index += 1;
+
+            for &child in self.inner[id].children.iter().rev() {
+                stack.push(child);
+            }
+        }
+
+        items.sort_unstable_by(|(a_id, a_ord), (b_id, b_ord)| {
+            let za = self.inner[*a_id].node.z_index;
+            let zb = self.inner[*b_id].node.z_index;
+            (za, *a_ord).cmp(&(zb, *b_ord))
+        });
+
+        for (id, _) in items {
+            draw_fn(&self.inner[id]);
+        }
     }
 }
 
@@ -107,8 +125,24 @@ impl Arena {
     }
 }
 
-struct ArenaNode {
+pub(crate) struct ArenaNode {
     node: Node,
+    #[expect(unused)]
     parent: Option<NodeId>,
     children: Vec<NodeId>,
+}
+
+impl ArenaNode {
+    pub(crate) fn render(&self, buffer: &mut Buffer) {
+        if let Some(renderer) = &self.node.spec.renderer {
+            let mut canvas = Canvas::new(buffer.area.into(), buffer);
+            renderer(&mut canvas);
+        }
+    }
+
+    pub(crate) fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
+        if let Some(listeners) = self.node.spec.listeners.get_mut(msg) {
+            listeners.dispatch(msg, ctx);
+        }
+    }
 }

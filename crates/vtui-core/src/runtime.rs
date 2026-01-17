@@ -4,7 +4,6 @@ use ratatui::prelude::Backend;
 
 use crate::{
     arena::Arena,
-    canvas::Canvas,
     component::{FactoryFn, Node},
     context::Context,
     driver::Driver,
@@ -32,7 +31,7 @@ impl Runtime {
         }
     }
 
-    pub fn draw<D>(&self, driver: &mut D) -> Result<(), RuntimeError>
+    pub fn draw<D>(&mut self, driver: &mut D) -> Result<(), RuntimeError>
     where
         D: Driver,
         RuntimeError: From<<D::Backend as Backend>::Error>,
@@ -40,11 +39,9 @@ impl Runtime {
         let terminal = driver.terminal();
 
         terminal.draw(|f| {
-            for node_id in self.arena.iter_draw() {
-                let node = &self.arena[node_id];
-                let canvas = Canvas::new(f.area().into(), f.buffer_mut());
-                node.render(canvas);
-            }
+            self.arena.draw_for_each(|node| {
+                node.render(f.buffer_mut());
+            });
         })?;
 
         Ok(())
@@ -72,9 +69,8 @@ impl Runtime {
 
 impl Runtime {
     fn dispatch(&mut self, msg: &Message) {
-        for node_id in self.arena.iter_update() {
-            let node = &mut self.arena[node_id];
+        self.arena.update_for_each(|node| {
             node.dispatch(msg, &mut self.context);
-        }
+        })
     }
 }
