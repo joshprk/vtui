@@ -1,5 +1,3 @@
-use std::ops::{Index, IndexMut};
-
 use ratatui::buffer::Buffer;
 use slotmap::{SlotMap, new_key_type};
 
@@ -16,20 +14,6 @@ new_key_type! { struct NodeId; }
 pub(crate) struct Arena {
     roots: Vec<NodeId>,
     inner: SlotMap<NodeId, ArenaNode>,
-}
-
-impl Index<NodeId> for Arena {
-    type Output = ArenaNode;
-
-    fn index(&self, index: NodeId) -> &Self::Output {
-        &self.inner[index]
-    }
-}
-
-impl IndexMut<NodeId> for Arena {
-    fn index_mut(&mut self, index: NodeId) -> &mut Self::Output {
-        &mut self.inner[index]
-    }
 }
 
 impl Arena {
@@ -107,15 +91,15 @@ impl Arena {
 impl Arena {
     fn compute_layout_recursive(&mut self, rect: LogicalRect, node_id: NodeId) {
         let (children_ids, rects) = {
-            let node = &self[node_id];
+            let node = &self.inner[node_id];
             let children_ids = node.children.clone();
-            let children = children_ids.iter().map(|&id| &self[id]);
+            let children = children_ids.iter().map(|&id| &self.inner[id]);
             let rects = node.node.layout.split(rect, children);
             (children_ids, rects)
         };
 
         for (child_id, child_rect) in children_ids.into_iter().zip(rects) {
-            self[child_id].rect = child_rect;
+            self.inner[child_id].rect = child_rect;
             self.compute_layout_recursive(child_rect, child_id);
         }
     }
