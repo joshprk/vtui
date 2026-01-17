@@ -196,6 +196,10 @@ impl Canvas<'_> {
         self.buf
     }
 
+    pub fn rect(&self) -> LogicalRect {
+        self.rect
+    }
+
     pub fn set_offset(&mut self, offset_x: i32, offset_y: i32) {
         self.offset_x = offset_x;
         self.offset_y = offset_y;
