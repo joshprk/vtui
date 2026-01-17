@@ -16,24 +16,28 @@ impl Layout {
 
         match self.axis {
             Axis::Horizontal => {
-                let unit_width = rect_width / num_children as f64;
+                let unit = rect_width / num_children as f64;
                 (0..num_children)
                     .map(|i| {
-                        let mut rect = rect;
-                        rect.width = (unit_width * (i + 1) as f64).round() as i32;
-                        rect.x = (unit_width * i as f64).round() as i32;
-                        rect
+                        let mut r = rect;
+                        let x0 = (unit * i as f64).round() as i32;
+                        let x1 = (unit * (i + 1) as f64).round() as i32;
+                        r.x = x0;
+                        r.width = x1 - x0;
+                        r
                     })
                     .collect()
             }
             Axis::Vertical => {
-                let unit_height = rect_height / num_children as f64;
+                let unit = rect_height / num_children as f64;
                 (0..num_children)
                     .map(|i| {
-                        let mut rect = rect;
-                        rect.height = (unit_height * (i + 1) as f64).round() as i32;
-                        rect.y = (unit_height * i as f64).round() as i32;
-                        rect
+                        let mut r = rect;
+                        let y0 = (unit * i as f64).round() as i32;
+                        let y1 = (unit * (i + 1) as f64).round() as i32;
+                        r.y = y0;
+                        r.height = y1 - y0;
+                        r
                     })
                     .collect()
             }
