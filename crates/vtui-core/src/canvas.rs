@@ -184,11 +184,11 @@ impl Canvas<'_> {
     }
 
     fn get_buf_column(&self, x: i32) -> i32 {
-        x - self.offset_x
+        self.rect.x + x - self.offset_x
     }
 
     fn get_buf_row(&self, y: i32) -> i32 {
-        y - self.offset_y
+        self.rect.y + y - self.offset_y
     }
 
     fn clipped(&self) -> bool {
@@ -215,44 +215,62 @@ impl Canvas<'_> {
     }
 
     pub fn render_widget(&mut self, rect: LogicalRect, widget: impl Widget) {
-        let rect = rect.with_offset(self.offset_x, self.offset_y);
+        let rect = rect.with_offset(
+            self.offset_x - self.rect.x,
+            self.offset_y - self.rect.y,
+        );
 
         if !rect.intersects(self.rect) {
             return;
         }
 
+        // Clip to canvas viewport
+        let clip = rect.intersection(self.rect);
+        
+        // Clip to buffer bounds - this ensures non-negative coordinates
+        let buffer_bounds = LogicalRect::from(self.buf.area);
+        let final_clip = clip.intersection(buffer_bounds);
+        
+        // Early exit if nothing visible in buffer
+        if final_clip.width <= 0 || final_clip.height <= 0 {
+            return;
+        }
+        
+        // Now final_clip.{x,y} are guaranteed >= buffer_bounds.{x,y}
+        // For typical case where buffer starts at (0,0), they're guaranteed >= 0
+        
+        // Create temporary buffer for widget rendering
         let temp_rect = Rect {
             x: 0,
             y: 0,
-            width: rect.width as u16,
-            height: rect.height as u16,
+            width: rect.width.min(u16::MAX as i32) as u16,
+            height: rect.height.min(u16::MAX as i32) as u16,
         };
 
         let mut temp_buf = Buffer::empty(temp_rect);
         widget.render(temp_rect, &mut temp_buf);
-
-        let clip = rect.intersection(self.rect);
-
-        // Source origin inside temp buffer
-        let src_x0 = (clip.x - rect.x) as usize;
-        let src_y0 = (clip.y - rect.y) as usize;
-
-        // Destination origin inside canvas buffer
-        let dst_x0 = clip.x as usize;
-        let dst_y0 = clip.y as usize;
-
+        
+        // Calculate source offset in temp buffer
+        // This tells us which part of the rendered widget to copy
+        let src_x0 = (final_clip.x - rect.x) as usize;
+        let src_y0 = (final_clip.y - rect.y) as usize;
+        
+        // Calculate destination offset in canvas buffer
+        // Subtract buffer area offset to get array index
+        let dst_x0 = (final_clip.x - self.buf.area.x as i32) as usize;
+        let dst_y0 = (final_clip.y - self.buf.area.y as i32) as usize;
+        
         let src_stride = rect.width as usize;
         let dst_stride = self.buf.area.width as usize;
-
-        let row_len = clip.width as usize;
-
-        for row in 0..clip.height as usize {
+        let row_len = final_clip.width as usize;
+        
+        // Copy visible portion from temp buffer to canvas buffer
+        for row in 0..final_clip.height as usize {
             let src_row = (src_y0 + row) * src_stride + src_x0;
             let dst_row = (dst_y0 + row) * dst_stride + dst_x0;
-
+            
             let src = &temp_buf.content[src_row..src_row + row_len];
             let dst = &mut self.buf.content[dst_row..dst_row + row_len];
-
             dst.clone_from_slice(src);
         }
     }

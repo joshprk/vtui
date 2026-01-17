@@ -4,7 +4,7 @@ use ratatui::buffer::Buffer;
 use slotmap::{SlotMap, new_key_type};
 
 use crate::{
-    canvas::Canvas,
+    canvas::{Canvas, LogicalRect},
     component::{Child, Node},
     context::Context,
     events::Message,
@@ -19,16 +19,16 @@ pub(crate) struct Arena {
 }
 
 impl Index<NodeId> for Arena {
-    type Output = Node;
+    type Output = ArenaNode;
 
     fn index(&self, index: NodeId) -> &Self::Output {
-        &self.inner[index].node
+        &self.inner[index]
     }
 }
 
 impl IndexMut<NodeId> for Arena {
     fn index_mut(&mut self, index: NodeId) -> &mut Self::Output {
-        &mut self.inner[index].node
+        &mut self.inner[index]
     }
 }
 
@@ -89,6 +89,8 @@ impl Arena {
             (za, *a_ord).cmp(&(zb, *b_ord))
         });
 
+        self.compute_layout();
+
         for (id, _) in items {
             draw_fn(&self.inner[id]);
         }
@@ -101,6 +103,7 @@ impl Arena {
             node,
             parent,
             children: Vec::new(),
+            rect: LogicalRect::new(0, 0, 0, 0),
         });
 
         if let Some(parent) = parent {
@@ -123,6 +126,8 @@ impl Arena {
 
         id
     }
+
+    fn compute_layout(&mut self) {}
 }
 
 pub(crate) struct ArenaNode {
@@ -130,12 +135,13 @@ pub(crate) struct ArenaNode {
     #[expect(unused)]
     parent: Option<NodeId>,
     children: Vec<NodeId>,
+    rect: LogicalRect,
 }
 
 impl ArenaNode {
     pub(crate) fn render(&self, buffer: &mut Buffer) {
         if let Some(renderer) = &self.node.spec.renderer {
-            let mut canvas = Canvas::new(buffer.area.into(), buffer);
+            let mut canvas = Canvas::new(self.rect, buffer);
             renderer(&mut canvas);
         }
     }
