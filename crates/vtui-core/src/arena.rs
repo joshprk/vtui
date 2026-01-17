@@ -91,7 +91,8 @@ impl Arena {
             self.roots.push(id);
         }
 
-        let children = self.inner[id].node
+        let children = self.inner[id]
+            .node
             .iter_children()
             .map(|child| match child {
                 Child::Static(factory) => factory(),
