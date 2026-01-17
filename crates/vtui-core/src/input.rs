@@ -1,6 +1,6 @@
 use crate::events::{
     KeyPress, KeyRelease, KeyRepeat, Message, MouseDown, MouseDrag, MouseHover, MouseScroll,
-    MouseUp,
+    MouseUp, Resize,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -116,6 +116,10 @@ pub enum Input {
     KeyRelease {
         key: KeyCode,
     },
+    Resize {
+        width: u16,
+        height: u16,
+    },
 }
 
 impl Input {
@@ -129,6 +133,7 @@ impl Input {
             Input::KeyPress { key } => Message::new(KeyPress { key }),
             Input::KeyRepeat { key } => Message::new(KeyRepeat { key }),
             Input::KeyRelease { key } => Message::new(KeyRelease { key }),
+            Input::Resize { width, height } => Message::new(Resize { width, height }),
         }
     }
 }

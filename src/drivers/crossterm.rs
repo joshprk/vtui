@@ -87,6 +87,7 @@ fn normalize_input(event: crossterm::event::Event) -> Option<Input> {
     match event {
         crossterm::event::Event::Mouse(mouse_event) => normalize_mouse_event(mouse_event),
         crossterm::event::Event::Key(key_event) => normalize_key_event(key_event),
+        crossterm::event::Event::Resize(width, height) => Some(Input::Resize { width, height }),
         _ => None,
     }
 }

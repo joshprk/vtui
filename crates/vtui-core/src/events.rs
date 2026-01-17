@@ -77,3 +77,10 @@ pub struct KeyRelease {
 }
 
 impl Event for KeyRelease {}
+
+pub struct Resize {
+    pub width: u16,
+    pub height: u16,
+}
+
+impl Event for Resize {}
