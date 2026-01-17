@@ -32,7 +32,7 @@ impl Runtime {
         }
     }
 
-    pub fn draw<D>(&self, driver: &mut D) -> Result<(), RuntimeError>
+    pub fn draw<D>(&mut self, driver: &mut D) -> Result<(), RuntimeError>
     where
         D: Driver,
         RuntimeError: From<<D::Backend as Backend>::Error>,
@@ -40,9 +40,14 @@ impl Runtime {
         let terminal = driver.terminal();
 
         terminal.draw(|f| {
+            let terminal_area = f.area().into();
+            self.arena.compute_layout(terminal_area);
+
             for node_id in self.arena.iter_draw() {
                 let node = &self.arena[node_id];
-                let canvas = Canvas::new(f.area().into(), f.buffer_mut());
+                let computed_area = self.arena.get_computed_layout(node_id).unwrap();
+                
+                let canvas = Canvas::new(computed_area, f.buffer_mut());
                 node.render(canvas);
             }
         })?;

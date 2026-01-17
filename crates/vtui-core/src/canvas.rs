@@ -2,6 +2,8 @@ use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
+use crate::layout::NodeMargin;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LogicalRect {
     pub x: i32,
@@ -81,6 +83,18 @@ impl LogicalRect {
         (self.width as i64) * (self.height as i64)
     }
 
+    pub const fn inner(self, margin: NodeMargin) -> Self {
+        let horizontal = margin.x.saturating_mul(2);
+        let vertical = margin.y.saturating_mul(2);
+
+        Self {
+            x: self.x.saturating_add(margin.x),
+            y: self.y.saturating_add(margin.y),
+            width: self.width.saturating_sub(horizontal),
+            height: self.height.saturating_sub(vertical),
+        }
+    }
+
     pub const fn left(self) -> i32 {
         self.x
     }
@@ -113,6 +127,10 @@ impl<'a> Canvas<'a> {
             offset_x: 0,
             offset_y: 0,
         }
+    }
+
+    pub fn area(&self) -> LogicalRect {
+        self.rect
     }
 }
 
@@ -184,11 +202,11 @@ impl Canvas<'_> {
     }
 
     fn get_buf_column(&self, x: i32) -> i32 {
-        x - self.offset_x
+        x - self.offset_x + self.rect.x
     }
 
     fn get_buf_row(&self, y: i32) -> i32 {
-        y - self.offset_y
+        y - self.offset_y + self.rect.y
     }
 
     fn clipped(&self) -> bool {
@@ -249,11 +267,17 @@ impl Canvas<'_> {
         for row in 0..clip.height as usize {
             let src_row = (src_y0 + row) * src_stride + src_x0;
             let dst_row = (dst_y0 + row) * dst_stride + dst_x0;
-
-            let src = &temp_buf.content[src_row..src_row + row_len];
-            let dst = &mut self.buf.content[dst_row..dst_row + row_len];
-
-            dst.clone_from_slice(src);
+            
+            // Safe bounds check before indexing
+            if src_row + row_len <= temp_buf.content.len() && 
+               dst_row + row_len <= self.buf.content.len() {
+                let src = &temp_buf.content[src_row..src_row + row_len];
+                let dst = &mut self.buf.content[dst_row..dst_row + row_len];
+                dst.clone_from_slice(src);
+            } else {
+                // Skip this row - would overflow buffer bounds
+                break;
+            }
         }
     }
 }

@@ -773,6 +773,8 @@ name = "vtui-core"
 version = "0.1.0"
 dependencies = [
  "generational-box",
+ "itertools 0.14.0",
+ "kasuari",
  "ratatui",
  "slotmap",
  "thiserror",

@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use slotmap::{SlotMap, new_key_type};
 
-use crate::component::{Child, Node};
+use crate::{canvas::LogicalRect, component::{Child, Node}};
 
 new_key_type! { pub struct NodeId; }
 
@@ -83,6 +83,7 @@ impl Arena {
             node,
             parent,
             children: Vec::new(),
+            computed_rect: None,
         });
 
         if let Some(parent) = parent {
@@ -106,8 +107,53 @@ impl Arena {
     }
 }
 
+impl Arena {
+    pub fn get_computed_layout(&self, node_id: NodeId) -> Option<LogicalRect> {
+        self.inner.get(node_id)?.computed_rect
+    }
+
+    pub fn compute_layout(&mut self, terminal_area: LogicalRect) {
+        // Phase 1: Reset computed areas (mutable borrow)
+        for node in self.inner.values_mut() {
+            node.computed_rect = None;
+        }
+        
+        // Phase 2: Compute layout (separate mutable borrow)
+        for root_id in self.roots.clone() {
+            if let Some(root_node) = self.inner.get_mut(root_id) {
+                root_node.computed_rect = Some(terminal_area);
+            }
+            self.compute_node_layout_recursive(root_id, terminal_area);
+        }
+    }
+    
+    fn compute_node_layout_recursive(&mut self, node_id: NodeId, available_area: LogicalRect) {
+        // Take node data separately to avoid borrow conflicts
+        let (parent_layout, child_ids) = {
+            let arena_node = &self.inner[node_id];
+            (arena_node.node.layout, arena_node.children.clone())
+        };
+        
+        // Compute layout using node_data
+        let child_areas = {
+            let children: Vec<&Node> = child_ids
+                .iter()
+                .map(|&id| &self.inner[id].node)
+                .collect();
+            parent_layout.split(available_area, children)
+        };
+
+        for (&child_id, &area) in child_ids.iter().zip(child_areas.iter()) {
+            let child_node = self.inner.get_mut(child_id).unwrap();
+            child_node.computed_rect = Some(area);
+            self.compute_node_layout_recursive(child_id, area);
+        }
+    }
+}
+
 struct ArenaNode {
     node: Node,
     parent: Option<NodeId>,
     children: Vec<NodeId>,
+    computed_rect: Option<LogicalRect>,
 }

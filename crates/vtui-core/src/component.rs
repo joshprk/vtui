@@ -4,11 +4,7 @@ use std::{
 };
 
 use crate::{
-    canvas::Canvas,
-    context::{Context, EventContext},
-    events::{Event, Message},
-    listeners::{DrawListener, ListenerStore},
-    state::{State, StateOwner},
+    canvas::Canvas, context::{Context, EventContext}, events::{Event, Message}, layout::{NodeConstraint, NodeLayout, NodeMargin, NodeSpacing}, listeners::{DrawListener, ListenerStore}, state::{State, StateOwner}
 };
 
 pub type FactoryFn<P> = fn(Component, P) -> Node;
@@ -52,6 +48,7 @@ pub(crate) struct Spec {
 pub struct Node {
     spec: Spec,
     children: Vec<Child>,
+    pub layout: NodeLayout,
     pub z_index: i32,
 }
 
@@ -65,6 +62,7 @@ impl TryFrom<Component> for Node {
             Ok(spec) => Ok(Self {
                 spec: spec.into_inner(),
                 children: Vec::default(),
+                layout: NodeLayout::default(),
                 z_index: 0,
             }),
             Err(inner) => Err(Component { inner }),
