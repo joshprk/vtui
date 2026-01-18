@@ -4,10 +4,10 @@ use std::{
 };
 
 use crate::{
-    canvas::Canvas,
+    canvas::{Canvas, LogicalRect},
     context::EventContext,
     events::{Event, Message},
-    layout::Layout,
+    layout::{Axis, Measure, compute_split},
     listeners::{DrawListener, ErasedListenerBucket, ListenerStore},
     state::{State, StateOwner},
 };
@@ -52,9 +52,8 @@ pub(crate) struct Spec {
 
 pub struct Node {
     spec: Spec,
-    children: Vec<Child>,
-    pub layout: Layout,
-    pub z_index: i32,
+    pub composition: Composition,
+    pub layer: i32,
 }
 
 impl TryFrom<Component> for Node {
@@ -66,9 +65,8 @@ impl TryFrom<Component> for Node {
         match Rc::try_unwrap(inner) {
             Ok(spec) => Ok(Self {
                 spec: spec.into_inner(),
-                children: Vec::default(),
-                layout: Layout::default(),
-                z_index: 0,
+                composition: Composition::default(),
+                layer: 0,
             }),
             Err(inner) => Err(Component { inner }),
         }
@@ -84,14 +82,14 @@ impl Node {
         factory(Component::default(), props)
     }
 
-    pub fn add_static_child<P: Props>(&mut self, factory: FactoryFn<P>, props: P) {
+    pub fn add_static_child<P: Props>(
+        &mut self,
+        factory: FactoryFn<P>,
+        props: P,
+        measure: Measure,
+    ) {
         let factory = Box::new(move || Node::from_factory(factory, props.clone()));
-
-        self.children.push(Child::Static(factory))
-    }
-
-    pub(crate) fn iter_children(&self) -> impl DoubleEndedIterator<Item = &Child> {
-        self.children.iter()
+        self.composition.push(Child::Static(factory), measure);
     }
 
     pub(crate) fn get_renderer(&self) -> Option<&DrawListener> {
@@ -108,4 +106,24 @@ impl Node {
 
 pub enum Child {
     Static(Box<dyn Fn() -> Node>),
+}
+
+#[derive(Default)]
+pub struct Composition {
+    axis: Axis,
+    children: Vec<(Child, Measure)>,
+}
+
+impl Composition {
+    pub fn push(&mut self, child: Child, measure: Measure) {
+        self.children.push((child, measure));
+    }
+
+    pub fn children(&self) -> impl Iterator<Item = &(Child, Measure)> {
+        self.children.iter()
+    }
+
+    pub fn split(&self, area: LogicalRect, measures: &[Measure]) -> Vec<LogicalRect> {
+        compute_split(self.axis, area, measures)
+    }
 }

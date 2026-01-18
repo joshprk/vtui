@@ -6,20 +6,21 @@ use crate::{
     component::{Child, Node},
     context::Context,
     events::Message,
+    layout::Measure,
 };
 
 new_key_type! { struct NodeId; }
 
 #[derive(Default)]
 pub(crate) struct Arena {
-    roots: Vec<NodeId>,
+    root: NodeId,
     inner: SlotMap<NodeId, ArenaNode>,
 }
 
 impl Arena {
     pub fn new(root: Node) -> Self {
         let mut arena = Self::default();
-        arena.push(root, None);
+        arena.root = arena.push(root);
         arena
     }
 
@@ -27,11 +28,7 @@ impl Arena {
     where
         F: FnMut(&mut ArenaNode),
     {
-        let mut stack = Vec::new();
-
-        for &root in self.roots.iter().rev() {
-            stack.push((root, false));
-        }
+        let mut stack = vec![(self.root, false)];
 
         while let Some((id, visited)) = stack.pop() {
             if visited {
@@ -39,7 +36,7 @@ impl Arena {
                 update_fn(node);
             } else {
                 stack.push((id, true));
-                for &child in self.inner[id].children.iter().rev() {
+                for &(child, _) in self.inner[id].children.iter().rev() {
                     stack.push((child, false));
                 }
             }
@@ -51,25 +48,21 @@ impl Arena {
         F: FnMut(&ArenaNode),
     {
         let mut items = Vec::new();
-        let mut stack = Vec::new();
+        let mut stack = vec![self.root];
         let mut visit_index: u32 = 0;
-
-        for &root in self.roots.iter().rev() {
-            stack.push(root);
-        }
 
         while let Some(id) = stack.pop() {
             items.push((id, visit_index));
             visit_index += 1;
 
-            for &child in self.inner[id].children.iter().rev() {
+            for &(child, _) in self.inner[id].children.iter().rev() {
                 stack.push(child);
             }
         }
 
         items.sort_unstable_by(|(a_id, a_ord), (b_id, b_ord)| {
-            let za = self.inner[*a_id].node.z_index;
-            let zb = self.inner[*b_id].node.z_index;
+            let za = self.inner[*a_id].inner.layer;
+            let zb = self.inner[*b_id].inner.layer;
             (za, *a_ord).cmp(&(zb, *b_ord))
         });
 
@@ -79,55 +72,62 @@ impl Arena {
     }
 
     pub fn compute_layout(&mut self, rect: LogicalRect) {
-        for root_id in self.roots.clone() {
-            if let Some(root_node) = self.inner.get_mut(root_id) {
-                root_node.rect = rect;
-            }
-            self.compute_layout_recursive(rect, root_id);
-        }
+        let root = self.root;
+        self.inner[root].rect = rect;
+        self.compute_layout_recursive(root);
     }
 }
 
 impl Arena {
-    fn compute_layout_recursive(&mut self, rect: LogicalRect, node_id: NodeId) {
-        let (children_ids, rects) = {
-            let node = &self.inner[node_id];
-            let children_ids = node.children.clone();
-            let children = children_ids.iter().map(|&id| &self.inner[id]);
-            let rects = node.node.layout.split(rect, children);
-            (children_ids, rects)
+    fn compute_layout_recursive(&mut self, id: NodeId) {
+        let (child_ids, measures, composition, parent_rect) = {
+            let node = &self.inner[id];
+            (
+                node.children.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+                node.children.iter().map(|(_, m)| *m).collect::<Vec<_>>(),
+                &node.inner.composition,
+                node.rect,
+            )
         };
 
-        for (child_id, child_rect) in children_ids.into_iter().zip(rects) {
-            self.inner[child_id].rect = child_rect;
-            self.compute_layout_recursive(child_rect, child_id);
+        if child_ids.is_empty() {
+            return;
+        }
+
+        let rects = composition.split(parent_rect, &measures);
+
+        debug_assert_eq!(rects.len(), child_ids.len());
+
+        for ((child_id, rect), _) in child_ids.iter().zip(rects).zip(&measures) {
+            self.inner[*child_id].rect = rect;
+            self.compute_layout_recursive(*child_id);
         }
     }
 
-    fn push(&mut self, node: Node, parent: Option<NodeId>) -> NodeId {
+    fn push(&mut self, node: Node) -> NodeId {
         let id = self.inner.insert(ArenaNode {
-            node,
-            parent,
+            inner: node,
+            parent: None,
             children: Vec::new(),
             rect: LogicalRect::new(0, 0, 0, 0),
         });
 
-        if let Some(parent) = parent {
-            self.inner[parent].children.push(id);
-        } else {
-            self.roots.push(id);
-        }
-
         let children = self.inner[id]
-            .node
-            .iter_children()
-            .map(|child| match child {
-                Child::Static(factory) => factory(),
+            .inner
+            .composition
+            .children()
+            .map(|(child, measure)| {
+                let child = match child {
+                    Child::Static(factory) => factory(),
+                };
+                (child, *measure)
             })
-            .collect::<Vec<Node>>();
+            .collect::<Vec<(Node, Measure)>>();
 
-        for child in children {
-            self.push(child, Some(id));
+        for (child, measure) in children {
+            let child_id = self.push(child);
+            self.inner[child_id].parent = Some(id);
+            self.inner[id].children.push((child_id, measure));
         }
 
         id
@@ -135,23 +135,22 @@ impl Arena {
 }
 
 pub(crate) struct ArenaNode {
-    node: Node,
-    #[expect(unused)]
+    inner: Node,
     parent: Option<NodeId>,
-    children: Vec<NodeId>,
+    children: Vec<(NodeId, Measure)>,
     rect: LogicalRect,
 }
 
 impl ArenaNode {
     pub(crate) fn render(&self, buffer: &mut Buffer) {
-        if let Some(renderer) = &self.node.get_renderer() {
+        if let Some(renderer) = &self.inner.get_renderer() {
             let mut canvas = Canvas::new(self.rect, buffer);
             renderer(&mut canvas);
         }
     }
 
     pub(crate) fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
-        if let Some(listeners) = self.node.get_listeners(msg) {
+        if let Some(listeners) = self.inner.get_listeners(msg) {
             listeners.dispatch(msg, ctx);
         }
     }
