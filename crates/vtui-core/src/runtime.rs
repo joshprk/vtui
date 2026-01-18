@@ -39,9 +39,11 @@ impl Runtime {
         let terminal = driver.terminal();
 
         terminal.draw(|f| {
-            self.arena.compute_layout(f.area().into());
+            let rect = f.area();
+            let buffer = f.buffer_mut();
+            self.arena.compute_layout(rect.into());
             self.arena.draw_for_each(|node| {
-                node.render(f.buffer_mut());
+                node.render(buffer);
             });
         })?;
 
