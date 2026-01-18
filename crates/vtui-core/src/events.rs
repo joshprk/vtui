@@ -5,15 +5,30 @@ use crate::input::{KeyCode, MouseButton, MouseScrollDirection};
 pub trait Event: Send + 'static {}
 
 pub struct Message {
-    pub type_id: TypeId,
-    pub event: Box<dyn Any + Send>,
+    event_type_id: TypeId,
+    event: Box<dyn Any + Send>,
+}
+
+impl<E: Event> From<E> for Message {
+    fn from(value: E) -> Self {
+        Self {
+            event_type_id: TypeId::of::<E>(),
+            event: Box::new(value),
+        }
+    }
 }
 
 impl Message {
-    pub fn new(event: impl Event) -> Self {
-        let type_id = event.type_id();
-        let event = Box::new(event);
-        Self { type_id, event }
+    pub fn new<E: Event>(event: E) -> Self {
+        Self::from(event)
+    }
+
+    pub(crate) fn event_type_id(&self) -> TypeId {
+        self.event_type_id
+    }
+
+    pub(crate) fn downcast_ref<E: Event>(&self) -> Option<&E> {
+        self.event.downcast_ref::<E>()
     }
 }
 

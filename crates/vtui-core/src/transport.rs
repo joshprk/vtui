@@ -41,8 +41,8 @@ impl EventSource {
 pub struct EventSink(Sender<Message>);
 
 impl EventSink {
-    pub fn send(&self, value: Message) -> Result<(), SendError> {
-        self.0.send(value).map_err(|_| SendError)
+    pub fn send(&self, msg: Message) -> Result<(), SendError> {
+        self.0.send(msg).map_err(|_| SendError)
     }
 }
 

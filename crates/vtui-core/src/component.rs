@@ -43,16 +43,9 @@ impl Component {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct Spec {
-    pub renderer: Option<DrawListener>,
-    pub listeners: ListenerStore,
-    pub state: StateOwner,
-}
-
 pub struct Node {
     spec: Spec,
-    pub composition: Composition,
+    composition: Composition,
     pub layer: i32,
 }
 
@@ -102,14 +95,25 @@ impl Node {
     ) -> Option<&mut Box<dyn ErasedListenerBucket>> {
         self.spec.listeners.get_mut(msg)
     }
+
+    pub(crate) fn composition(&self) -> &Composition {
+        &self.composition
+    }
 }
 
-pub enum Child {
+#[derive(Default)]
+pub(crate) struct Spec {
+    pub renderer: Option<DrawListener>,
+    pub listeners: ListenerStore,
+    pub state: StateOwner,
+}
+
+pub(crate) enum Child {
     Static(Box<dyn Fn() -> Node>),
 }
 
 #[derive(Default)]
-pub struct Composition {
+pub(crate) struct Composition {
     axis: Axis,
     children: Vec<(Child, Measure)>,
 }

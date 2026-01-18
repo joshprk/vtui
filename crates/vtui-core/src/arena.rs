@@ -43,7 +43,7 @@ impl Arena {
         }
     }
 
-    pub fn draw_for_each<F>(&self, mut draw_fn: F)
+    pub fn draw_for_each<F>(&mut self, rect: LogicalRect, mut draw_fn: F)
     where
         F: FnMut(&ArenaNode),
     {
@@ -66,26 +66,29 @@ impl Arena {
             (za, *a_ord).cmp(&(zb, *b_ord))
         });
 
-        for (id, _) in items {
-            draw_fn(&self.inner[id]);
-        }
-    }
+        self.compute_layout(rect);
 
-    pub fn compute_layout(&mut self, rect: LogicalRect) {
-        let root = self.root;
-        self.inner[root].rect = rect;
-        self.compute_layout_recursive(root);
+        for (id, _) in items {
+            let node = &self.inner[id];
+            draw_fn(node);
+        }
     }
 }
 
 impl Arena {
+    fn compute_layout(&mut self, rect: LogicalRect) {
+        let root = self.root;
+        self.inner[root].rect = rect;
+        self.compute_layout_recursive(root);
+    }
+
     fn compute_layout_recursive(&mut self, id: NodeId) {
         let (child_ids, measures, composition, parent_rect) = {
             let node = &self.inner[id];
             (
                 node.children.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
                 node.children.iter().map(|(_, m)| *m).collect::<Vec<_>>(),
-                &node.inner.composition,
+                &node.inner.composition(),
                 node.rect,
             )
         };
@@ -114,7 +117,7 @@ impl Arena {
 
         let children = self.inner[id]
             .inner
-            .composition
+            .composition()
             .children()
             .map(|(child, measure)| {
                 let child = match child {

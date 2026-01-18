@@ -24,7 +24,7 @@ pub(crate) struct ListenerStore {
 
 impl ListenerStore {
     pub fn get_mut(&mut self, msg: &Message) -> Option<&mut Box<dyn ErasedListenerBucket>> {
-        let type_id = msg.type_id;
+        let type_id = msg.event_type_id();
         self.inner.get_mut(&type_id)
     }
 
@@ -57,7 +57,7 @@ impl<E: Event> ListenerBucket<E> {
 
 impl<E: Event> ErasedListenerBucket for ListenerBucket<E> {
     fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
-        let event = msg.event.downcast_ref::<E>().expect("TypeId mismatch");
+        let event = msg.downcast_ref::<E>().expect("TypeId mismatch");
         let mut ctx = EventContext::new(event, ctx);
 
         for listener in &mut self.inner {
