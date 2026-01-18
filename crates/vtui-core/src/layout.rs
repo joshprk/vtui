@@ -12,40 +12,45 @@ pub enum Measure {
     Exact(i32),
 }
 
+struct Variable {
+    start: i32,
+    size: i32,
+}
+
 pub(crate) fn compute_split(
     axis: Axis,
     area: LogicalRect,
     measures: &[Measure],
 ) -> Vec<LogicalRect> {
-    let mut rects = Vec::with_capacity(measures.len());
-
     match axis {
-        Axis::Horizontal => {
-            let mut x = area.x;
-            for Measure::Exact(w) in measures {
-                rects.push(LogicalRect {
-                    x,
-                    y: area.y,
-                    width: *w,
-                    height: area.height,
-                });
-                x += *w;
-            }
-        }
-
-        Axis::Vertical => {
-            let mut y = area.y;
-            for Measure::Exact(h) in measures {
-                rects.push(LogicalRect {
-                    x: area.x,
-                    y,
-                    width: area.width,
-                    height: *h,
-                });
-                y += *h;
-            }
-        }
+        Axis::Horizontal => split_measures(area.x, measures)
+            .map(|v| LogicalRect {
+                x: v.start,
+                y: area.y,
+                width: v.size,
+                height: area.height,
+            })
+            .collect(),
+        Axis::Vertical => split_measures(area.y, measures)
+            .map(|v| LogicalRect {
+                x: area.x,
+                y: v.start,
+                width: area.width,
+                height: v.size,
+            })
+            .collect(),
     }
+}
 
-    rects
+fn split_measures(start: i32, measures: &[Measure]) -> impl Iterator<Item = Variable> {
+    let mut cursor = start;
+
+    measures.iter().map(move |Measure::Exact(size)| {
+        let v = Variable {
+            start: cursor,
+            size: *size,
+        };
+        cursor += *size;
+        v
+    })
 }
