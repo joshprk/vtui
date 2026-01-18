@@ -1,7 +1,4 @@
-use std::{
-    cell::{RefCell, RefMut},
-    rc::Rc,
-};
+use std::cell::{RefCell, RefMut};
 
 use crate::{
     canvas::{Canvas, LogicalRect},
@@ -18,9 +15,9 @@ pub trait Props: Clone + 'static {}
 
 impl Props for () {}
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct Component {
-    inner: Rc<RefCell<Spec>>,
+    inner: RefCell<Spec>,
 }
 
 impl Component {
@@ -49,26 +46,21 @@ pub struct Node {
     pub layer: i32,
 }
 
-impl TryFrom<Component> for Node {
-    type Error = Component;
-
-    fn try_from(value: Component) -> Result<Self, Self::Error> {
+impl From<Component> for Node {
+    fn from(value: Component) -> Self {
         let Component { inner } = value;
 
-        match Rc::try_unwrap(inner) {
-            Ok(spec) => Ok(Self {
-                spec: spec.into_inner(),
-                composition: Composition::default(),
-                layer: 0,
-            }),
-            Err(inner) => Err(Component { inner }),
+        Self {
+            spec: inner.into_inner(),
+            composition: Composition::default(),
+            layer: 0,
         }
     }
 }
 
 impl Node {
-    pub fn from_component(value: Component) -> Result<Self, Component> {
-        Self::try_from(value)
+    pub fn from_component(value: Component) -> Self {
+        Self::from(value)
     }
 
     pub fn from_factory<P: Props>(factory: FactoryFn<P>, props: P) -> Self {
@@ -77,9 +69,9 @@ impl Node {
 
     pub fn add_static_child<P: Props>(
         &mut self,
+        measure: Measure,
         factory: FactoryFn<P>,
         props: P,
-        measure: Measure,
     ) {
         let factory = Box::new(move || Node::from_factory(factory, props.clone()));
         self.composition.push(Child::Static(factory), measure);

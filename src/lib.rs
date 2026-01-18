@@ -1,6 +1,7 @@
 pub use vtui_core::canvas;
 pub use vtui_core::events;
 pub use vtui_core::input;
+pub use vtui_core::layout;
 pub use vtui_core::runtime;
 pub use vtui_core::transport;
 
@@ -15,6 +16,7 @@ pub mod prelude {
         canvas::LogicalRect,
         component::{Component, Node, Props},
         driver::Driver,
+        layout::Measure,
         state::State,
     };
     pub use vtui_macros::{component, vtui};

@@ -87,7 +87,7 @@ pub fn component(_attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn vtui(_input: TokenStream) -> TokenStream {
     let expanded = quote! {
-        Node::try_from(c).ok().unwrap()
+        Node::from(c)
     };
     expanded.into()
 }
