@@ -16,7 +16,7 @@ pub mod prelude {
         canvas::LogicalRect,
         component::{Component, Node, Props},
         driver::Driver,
-        layout::Measure,
+        layout::{Flow, Measure},
         state::State,
     };
     pub use vtui_macros::{component, vtui};

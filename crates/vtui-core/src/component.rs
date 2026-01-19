@@ -4,7 +4,7 @@ use crate::{
     canvas::{Canvas, LogicalRect},
     context::EventContext,
     events::{Event, Message},
-    layout::{Axis, Measure, compute_split},
+    layout::{Flow, Measure, compute_split},
     listeners::{DrawListener, ErasedListenerBucket, ListenerStore},
     state::{State, StateOwner},
 };
@@ -90,8 +90,8 @@ impl Node {
         self
     }
 
-    pub fn set_axis(mut self, axis: Axis) -> Self {
-        self.composition.axis = axis;
+    pub fn set_flow(mut self, flow: Flow) -> Self {
+        self.composition.flow = flow;
         self
     }
 }
@@ -109,7 +109,7 @@ pub(crate) enum Child {
 
 #[derive(Default)]
 pub(crate) struct Composition {
-    axis: Axis,
+    flow: Flow,
     children: Vec<(Child, Measure)>,
 }
 
@@ -123,6 +123,6 @@ impl Composition {
     }
 
     pub fn split(&self, area: LogicalRect, measures: &[Measure]) -> Vec<LogicalRect> {
-        compute_split(self.axis, area, measures)
+        compute_split(self.flow, area, measures)
     }
 }

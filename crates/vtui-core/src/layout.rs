@@ -1,7 +1,7 @@
 use crate::canvas::LogicalRect;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Axis {
+pub enum Flow {
     Horizontal,
     #[default]
     Vertical,
@@ -19,12 +19,12 @@ struct Variable {
 }
 
 pub(crate) fn compute_split(
-    axis: Axis,
+    flow: Flow,
     area: LogicalRect,
     measures: &[Measure],
 ) -> Vec<LogicalRect> {
-    match axis {
-        Axis::Horizontal => split_measures(area.x, measures)
+    match flow {
+        Flow::Horizontal => split_measures(area.x, measures)
             .map(|v| LogicalRect {
                 x: v.start,
                 y: area.y,
@@ -32,7 +32,7 @@ pub(crate) fn compute_split(
                 height: area.height,
             })
             .collect(),
-        Axis::Vertical => split_measures(area.y, measures)
+        Flow::Vertical => split_measures(area.y, measures)
             .map(|v| LogicalRect {
                 x: area.x,
                 y: v.start,
