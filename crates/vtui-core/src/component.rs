@@ -59,22 +59,12 @@ impl From<Component> for Node {
 }
 
 impl Node {
-    pub fn from_component(value: Component) -> Self {
-        Self::from(value)
+    pub fn new(component: Component) -> Self {
+        Self::from(component)
     }
 
     pub fn from_factory<P: Props>(factory: FactoryFn<P>, props: P) -> Self {
         factory(Component::default(), props)
-    }
-
-    pub fn add_static_child<P: Props>(
-        &mut self,
-        measure: Measure,
-        factory: FactoryFn<P>,
-        props: P,
-    ) {
-        let factory = Box::new(move || Node::from_factory(factory, props.clone()));
-        self.composition.push(Child::Static(factory), measure);
     }
 
     pub(crate) fn get_renderer(&self) -> Option<&DrawListener> {
@@ -90,6 +80,19 @@ impl Node {
 
     pub(crate) fn composition(&self) -> &Composition {
         &self.composition
+    }
+}
+
+impl Node {
+    pub fn child<P: Props>(mut self, measure: Measure, factory: FactoryFn<P>, props: P) -> Self {
+        let factory = Box::new(move || Node::from_factory(factory, props.clone()));
+        self.composition.push(Child::Static(factory), measure);
+        self
+    }
+
+    pub fn set_axis(mut self, axis: Axis) -> Self {
+        self.composition.axis = axis;
+        self
     }
 }
 
