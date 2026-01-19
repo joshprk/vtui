@@ -12,6 +12,7 @@ pub enum Measure {
     Exact(i32),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Variable {
     start: i32,
     size: i32,
