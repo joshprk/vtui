@@ -1,10 +1,60 @@
-use syn::{FnArg, PathArguments, ReturnType, Signature, Type, TypePath};
+use proc_macro::TokenStream;
+use quote::quote;
+use syn::{FnArg, ItemFn, PathArguments, ReturnType, Signature, Type, TypePath, parse_macro_input};
 
 /// Expected identifier for the Component type in function signatures
 const COMPONENT_TYPE_IDENT: &str = "Component";
 
 /// Expected identifier for the Node return type
 const NODE_TYPE_IDENT: &str = "Node";
+
+pub(crate) fn transform_component(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut func = parse_macro_input!(item as ItemFn);
+
+    // Validate the function signature
+    if let Err(err) = validate_component_signature(&func.sig) {
+        return err.to_compile_error().into();
+    }
+
+    // Extract props type for trait bound check
+    let props_type = if func.sig.inputs.len() == 2 {
+        // Get the second argument's type
+        match func.sig.inputs.iter().nth(1) {
+            Some(FnArg::Typed(pat)) => pat.ty.clone(),
+            _ => syn::parse_quote!(()),
+        }
+    } else {
+        // Add hidden props argument if not present
+        func.sig.inputs.push(syn::parse_quote!(__props: ()));
+        syn::parse_quote!(())
+    };
+
+    let fn_name = &func.sig.ident;
+
+    // Generate a compile-time assertion that Props is implemented
+    // This creates a const function that will fail to compile if the trait bound isn't satisfied
+    let props_check = quote! {
+        const _: fn() = || {
+            // This function is never called, but the compiler checks the trait bound
+            fn assert_props_impl<T: Props>() {}
+            assert_props_impl::<#props_type>();
+        };
+    };
+
+    quote! {
+        #[allow(non_snake_case)]
+        #func
+
+        // Compile-time check that props implements Props trait
+        // This is scoped to avoid naming conflicts
+        #[allow(non_snake_case, dead_code)]
+        mod #fn_name {
+            use super::*;
+            #props_check
+        }
+    }
+    .into()
+}
 
 /// Checks if a type is the `Component` type by examining its path segments
 pub(crate) fn is_component_type(ty: &Type) -> bool {
