@@ -12,6 +12,9 @@ pub enum Measure {
     Exact(i32),
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct Layer(i32);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Variable {
     start: i32,

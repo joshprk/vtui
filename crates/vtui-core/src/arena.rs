@@ -61,8 +61,8 @@ impl Arena {
         }
 
         items.sort_unstable_by(|(a_id, a_ord), (b_id, b_ord)| {
-            let za = self.inner[*a_id].inner.layer;
-            let zb = self.inner[*b_id].inner.layer;
+            let za = self.inner[*a_id].inner.get_layer();
+            let zb = self.inner[*b_id].inner.get_layer();
             (za, *a_ord).cmp(&(zb, *b_ord))
         });
 

@@ -4,7 +4,7 @@ use crate::{
     canvas::{Canvas, LogicalRect},
     context::EventContext,
     events::{Event, Message},
-    layout::{Flow, Measure, compute_split},
+    layout::{Flow, Layer, Measure, compute_split},
     listeners::{DrawListener, ErasedListenerBucket, ListenerStore},
     state::{State, StateOwner},
 };
@@ -43,7 +43,6 @@ impl Component {
 pub struct Node {
     spec: Spec,
     composition: Composition,
-    pub layer: i32,
 }
 
 impl From<Component> for Node {
@@ -53,7 +52,6 @@ impl From<Component> for Node {
         Self {
             spec: inner.into_inner(),
             composition: Composition::default(),
-            layer: 0,
         }
     }
 }
@@ -94,6 +92,10 @@ impl Node {
         self.composition.flow = flow;
         self
     }
+
+    pub(crate) fn get_layer(&self) -> Layer {
+        self.composition.layer
+    }
 }
 
 #[derive(Default)]
@@ -110,6 +112,7 @@ pub(crate) enum Child {
 #[derive(Default)]
 pub(crate) struct Composition {
     flow: Flow,
+    layer: Layer,
     children: Vec<(Child, Measure)>,
 }
 
