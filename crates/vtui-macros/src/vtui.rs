@@ -1,12 +1,9 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenTree};
 use quote::quote;
 use syn::{
     Expr, Ident, Token, braced,
-    ext::IdentExt,
-    parse::{Parse, ParseStream, discouraged::Speculative},
-    punctuated::Punctuated,
-    token::{Brace, PathSep},
+    parse::{Parse, ParseStream},
+    token::Brace,
 };
 
 // Trait for anything that can provide completions
@@ -47,9 +44,9 @@ impl Parse for RootItem {
 impl Completable for RootItem {
     fn completions(&self) -> Vec<proc_macro2::TokenStream> {
         match self {
-            Self::FlowDirection(expr) => vec![],
             Self::Child(child) => child.completions(),
             Self::Incomplete(expr) => vec![quote! { #expr; }],
+            _ => vec![],
         }
     }
 }
@@ -81,8 +78,8 @@ impl Parse for ChildItem {
 impl Completable for ChildItem {
     fn completions(&self) -> Vec<proc_macro2::TokenStream> {
         match self {
-            Self::Measure(expr) => vec![],
             Self::Incomplete(expr) => vec![quote! { #expr; }],
+            _ => vec![],
         }
     }
 }
