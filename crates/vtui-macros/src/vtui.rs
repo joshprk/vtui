@@ -44,7 +44,7 @@ impl Parse for RootItem {
 impl Completable for RootItem {
     fn completions(&self) -> Vec<proc_macro2::TokenStream> {
         match self {
-            Self::FlowDirection(expr) => vec![quote! { #expr; }],
+            Self::FlowDirection(expr) => vec![],
             Self::Child(child) => child.completions(),
             Self::Incomplete(expr) => vec![quote! { #expr; }],
         }
@@ -78,7 +78,7 @@ impl Parse for ChildItem {
 impl Completable for ChildItem {
     fn completions(&self) -> Vec<proc_macro2::TokenStream> {
         match self {
-            Self::Measure(expr) => vec![quote! { #expr; }],
+            Self::Measure(expr) => vec![],
             Self::Incomplete(expr) => vec![quote! { #expr; }],
         }
     }
@@ -110,8 +110,7 @@ impl Parse for Child {
 
 impl Completable for Child {
     fn completions(&self) -> Vec<proc_macro2::TokenStream> {
-        let name = &self.name;
-        let mut comps = vec![quote! { #name; }];
+        let mut comps = Vec::new();
         
         // Add completions from all child items
         for item in &self.items {
@@ -119,6 +118,17 @@ impl Completable for Child {
         }
         
         comps
+    }
+}
+
+impl Child {
+    fn measure(&self) -> proc_macro2::TokenStream {
+        for item in &self.items {
+            if let ChildItem::Measure(expr) = item {
+                return quote! { #expr };
+            }
+        }
+        quote! { Measure::default() }
     }
 }
 
@@ -150,6 +160,28 @@ impl VtuiMacro {
             .flat_map(|item| item.completions())
             .collect();
         
+        // Collect flow directions
+        let flows = self.items.iter().filter_map(|item| {
+            if let RootItem::FlowDirection(expr) = item {
+                Some(quote! { .set_flow(#expr) })
+            } else {
+                None
+            }
+        });
+        
+        // Collect children
+        let children = self.items.iter().filter_map(|item| {
+            if let RootItem::Child(child) = item {
+                let factory = &child.name;
+                let measure = child.measure();
+                Some(quote! { 
+                    .child(#measure, #factory, ())
+                })
+            } else {
+                None
+            }
+        });
+        
         quote! {
             mod completions__ {
                 fn ignore() {
@@ -157,6 +189,8 @@ impl VtuiMacro {
                 }
             }
             Node::from(c)
+                #(#flows)*
+                #(#children)*
         }
     }
 }
