@@ -53,7 +53,11 @@ pub(crate) fn compute_split(
     }
 }
 
-fn split_measures(start: i32, viewport: i32, measures: &[Measure]) -> impl Iterator<Item = Variable> {
+fn split_measures(
+    start: i32,
+    viewport: i32,
+    measures: &[Measure],
+) -> impl Iterator<Item = Variable> {
     let mut cursor = start;
 
     measures.iter().map(move |measure| {
