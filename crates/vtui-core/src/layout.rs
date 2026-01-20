@@ -12,6 +12,12 @@ pub enum Measure {
     Exact(i32),
 }
 
+impl Default for Measure {
+    fn default() -> Self {
+        Measure::Exact(30)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Layer(i32);
 
