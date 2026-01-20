@@ -2,8 +2,11 @@ use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenTree};
 use quote::quote;
 use syn::{
-    Expr, Ident, Token, braced, ext::IdentExt, parse::{Parse, ParseStream, discouraged::Speculative}, 
-    punctuated::Punctuated, token::{Brace, PathSep}
+    Expr, Ident, Token, braced,
+    ext::IdentExt,
+    parse::{Parse, ParseStream, discouraged::Speculative},
+    punctuated::Punctuated,
+    token::{Brace, PathSep},
 };
 
 // Trait for anything that can provide completions
@@ -13,9 +16,9 @@ trait Completable {
 
 // Top-level items in the vtui! macro
 enum RootItem {
-    FlowDirection(syn::Expr),  // Recognized: Flow::Horizontal, Flow::Vertical
-    Child(Child),              // Recognized: Header { ... }
-    Incomplete(syn::Expr),     // Unrecognized but parseable - provides completions
+    FlowDirection(syn::Expr), // Recognized: Flow::Horizontal, Flow::Vertical
+    Child(Child),             // Recognized: Header { ... }
+    Incomplete(syn::Expr),    // Unrecognized but parseable - provides completions
 }
 
 impl Parse for RootItem {
@@ -24,10 +27,10 @@ impl Parse for RootItem {
         if input.peek(Ident) && input.peek2(Brace) {
             return Ok(Self::Child(input.parse()?));
         }
-        
+
         // Parse as expression
         let expr = input.parse::<syn::Expr>()?;
-        
+
         // Try to recognize it
         if let Some(enum_name) = is_expr_enum(&expr) {
             match enum_name.as_str() {
@@ -35,7 +38,7 @@ impl Parse for RootItem {
                 _ => {}
             }
         }
-        
+
         // Unrecognized - but still provide completions
         Ok(Self::Incomplete(expr))
     }
@@ -53,15 +56,15 @@ impl Completable for RootItem {
 
 // Items that can appear inside a child component
 enum ChildItem {
-    Measure(syn::Expr),        // Recognized: Measure::Exact(10), Measure::Fill
-    Incomplete(syn::Expr),     // Unrecognized but parseable - provides completions
-    // Future: Prop(syn::Ident, syn::Expr),
+    Measure(syn::Expr), // Recognized: Measure::Exact(10), Measure::Fill
+    Incomplete(syn::Expr), // Unrecognized but parseable - provides completions
+                        // Future: Prop(syn::Ident, syn::Expr),
 }
 
 impl Parse for ChildItem {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let expr = input.parse::<syn::Expr>()?;
-        
+
         // Try to recognize it
         if let Some(enum_name) = is_expr_enum(&expr) {
             match enum_name.as_str() {
@@ -69,7 +72,7 @@ impl Parse for ChildItem {
                 _ => {}
             }
         }
-        
+
         // Unrecognized - but still provide completions
         Ok(Self::Incomplete(expr))
     }
@@ -95,7 +98,7 @@ impl Parse for Child {
         let name = input.parse::<syn::Path>()?;
         let content;
         braced!(content in input);
-        
+
         let mut items = Vec::new();
         while !content.is_empty() {
             items.push(content.parse::<ChildItem>()?);
@@ -103,7 +106,7 @@ impl Parse for Child {
                 content.parse::<Token![,]>()?;
             }
         }
-        
+
         Ok(Self { name, items })
     }
 }
@@ -111,12 +114,12 @@ impl Parse for Child {
 impl Completable for Child {
     fn completions(&self) -> Vec<proc_macro2::TokenStream> {
         let mut comps = Vec::new();
-        
+
         // Add completions from all child items
         for item in &self.items {
             comps.extend(item.completions());
         }
-        
+
         comps
     }
 }
@@ -140,14 +143,14 @@ struct VtuiMacro {
 impl Parse for VtuiMacro {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut items = Vec::new();
-        
+
         while !input.is_empty() {
             items.push(input.parse::<RootItem>()?);
             if input.peek(Token![,]) {
                 input.parse::<Token![,]>()?;
             }
         }
-        
+
         Ok(Self { items })
     }
 }
@@ -155,11 +158,12 @@ impl Parse for VtuiMacro {
 impl VtuiMacro {
     pub fn expand(self) -> proc_macro2::TokenStream {
         // Collect all completions from all items
-        let completions: Vec<_> = self.items
+        let completions: Vec<_> = self
+            .items
             .iter()
             .flat_map(|item| item.completions())
             .collect();
-        
+
         // Collect flow directions
         let flows = self.items.iter().filter_map(|item| {
             if let RootItem::FlowDirection(expr) = item {
@@ -168,20 +172,20 @@ impl VtuiMacro {
                 None
             }
         });
-        
+
         // Collect children
         let children = self.items.iter().filter_map(|item| {
             if let RootItem::Child(child) = item {
                 let factory = &child.name;
                 let measure = child.measure();
-                Some(quote! { 
+                Some(quote! {
                     .child(#measure, #factory, ())
                 })
             } else {
                 None
             }
         });
-        
+
         quote! {
             mod completions__ {
                 fn ignore() {
