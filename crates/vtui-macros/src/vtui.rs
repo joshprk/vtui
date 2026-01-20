@@ -1,180 +1,181 @@
 use proc_macro::TokenStream;
-use proc_macro2::TokenTree;
+use proc_macro2::{Span, TokenTree};
 use quote::quote;
-use syn::{Expr, Ident, Token, braced, parse::{ParseStream, discouraged::Speculative}, punctuated::Punctuated};
+use syn::{
+    Expr, Ident, Token, braced, ext::IdentExt, parse::{Parse, ParseStream, discouraged::Speculative}, 
+    punctuated::Punctuated, token::{Brace, PathSep}
+};
 
-enum Item {
-    Flow(Expr),
-    Layer(Expr),
-    Child(Child),
+// Trait for anything that can provide completions
+trait Completable {
+    fn completions(&self) -> Vec<proc_macro2::TokenStream>;
 }
 
-struct Child {
-    path: syn::Path,
-    measure: Option<syn::Expr>,
+// Top-level items in the vtui! macro
+enum RootItem {
+    FlowDirection(syn::Expr),  // Recognized: Flow::Horizontal, Flow::Vertical
+    Child(Child),              // Recognized: Header { ... }
+    Incomplete(syn::Expr),     // Unrecognized but parseable - provides completions
 }
 
-impl syn::parse::Parse for Child {
+impl Parse for RootItem {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let path: syn::Path = input.parse()?;
-
-        let content;
-        braced!(content in input);
-
-        let mut measure = None;
-
-        let exprs = Punctuated::<Expr, Token![,]>::parse_terminated(&content)?;
-
-        for expr in exprs {
-            if let Some(enum_name) = is_enum_attr(&expr) && enum_name == "Measure" {
-                measure = Some(expr);
-            } else {
-                return Err(syn::Error::new_spanned(expr, "unexpected token"));
+        // Peek ahead to see if this is a child component (has braces)
+        if input.peek(Ident) && input.peek2(Brace) {
+            return Ok(Self::Child(input.parse()?));
+        }
+        
+        // Parse as expression
+        let expr = input.parse::<syn::Expr>()?;
+        
+        // Try to recognize it
+        if let Some(enum_name) = is_expr_enum(&expr) {
+            match enum_name.as_str() {
+                "Flow" => return Ok(Self::FlowDirection(expr)),
+                _ => {}
             }
         }
-
-        Ok(Self { path, measure })
+        
+        // Unrecognized - but still provide completions
+        Ok(Self::Incomplete(expr))
     }
 }
 
-#[derive(Default)]
-struct NodeDescription {
-    items: Vec<Item>,
+impl Completable for RootItem {
+    fn completions(&self) -> Vec<proc_macro2::TokenStream> {
+        match self {
+            Self::FlowDirection(expr) => vec![quote! { #expr; }],
+            Self::Child(child) => child.completions(),
+            Self::Incomplete(expr) => vec![quote! { #expr; }],
+        }
+    }
 }
 
-impl syn::parse::Parse for NodeDescription {
+// Items that can appear inside a child component
+enum ChildItem {
+    Measure(syn::Expr),        // Recognized: Measure::Exact(10), Measure::Fill
+    Incomplete(syn::Expr),     // Unrecognized but parseable - provides completions
+    // Future: Prop(syn::Ident, syn::Expr),
+}
+
+impl Parse for ChildItem {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let expr = input.parse::<syn::Expr>()?;
+        
+        // Try to recognize it
+        if let Some(enum_name) = is_expr_enum(&expr) {
+            match enum_name.as_str() {
+                "Measure" => return Ok(Self::Measure(expr)),
+                _ => {}
+            }
+        }
+        
+        // Unrecognized - but still provide completions
+        Ok(Self::Incomplete(expr))
+    }
+}
+
+impl Completable for ChildItem {
+    fn completions(&self) -> Vec<proc_macro2::TokenStream> {
+        match self {
+            Self::Measure(expr) => vec![quote! { #expr; }],
+            Self::Incomplete(expr) => vec![quote! { #expr; }],
+        }
+    }
+}
+
+// A child component like Header { Measure::Exact(10) }
+struct Child {
+    name: syn::Path,
+    items: Vec<ChildItem>,
+}
+
+impl Parse for Child {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let name = input.parse::<syn::Path>()?;
+        let content;
+        braced!(content in input);
+        
+        let mut items = Vec::new();
+        while !content.is_empty() {
+            items.push(content.parse::<ChildItem>()?);
+            if content.peek(Token![,]) {
+                content.parse::<Token![,]>()?;
+            }
+        }
+        
+        Ok(Self { name, items })
+    }
+}
+
+impl Completable for Child {
+    fn completions(&self) -> Vec<proc_macro2::TokenStream> {
+        let name = &self.name;
+        let mut comps = vec![quote! { #name; }];
+        
+        // Add completions from all child items
+        for item in &self.items {
+            comps.extend(item.completions());
+        }
+        
+        comps
+    }
+}
+
+// The root vtui! macro
+struct VtuiMacro {
+    items: Vec<RootItem>,
+}
+
+impl Parse for VtuiMacro {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut items = Vec::new();
-
+        
         while !input.is_empty() {
-            let fork = input.fork();
-
-            if let Ok(child) = fork.parse::<Child>() {
-                input.advance_to(&fork);
-                items.push(Item::Child(child));
-            } else {
-                let expr: Expr = input.parse()?;
-
-                if let Some(enum_name) = is_enum_attr(&expr) && enum_name == "Flow" {
-                    items.push(Item::Flow(expr));
-                } else {
-                    return Err(syn::Error::new_spanned(expr, "unexpected token"));
-                }
+            items.push(input.parse::<RootItem>()?);
+            if input.peek(Token![,]) {
+                input.parse::<Token![,]>()?;
             }
-
-            let _ = input.parse::<Token![,]>();
         }
-
+        
         Ok(Self { items })
     }
 }
 
-impl NodeDescription {
-    pub fn expand(self) -> TokenStream {
-        let calls = self.items.into_iter().map(|item| {
-            match item {
-                Item::Flow(expr) => {
-                    quote! { .set_flow(#expr) }
-                },
-                Item::Child(child) => {
-                    let factory = child.path;
-                    let measure = match child.measure {
-                        Some(m) => quote! { #m },
-                        None => quote! { Measure::Exact(10) },
-                    };
-
-                    quote! { .child(#measure, #factory, ()) }
-                },
-                _ => {
-                    quote! { }
-                },
-            }
-        });
-
-        let stream = quote! {
-            Node::from(c)
-                #(#calls)*
-        };
-
-        stream.into()
-    }
-}
-
-struct Completion {
-    last_ident: Option<Ident>,
-}
-
-impl syn::parse::Parse for Completion {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut last_ident = None;
-
-        while !input.is_empty() {
-            // Capture identifiers
-            if let Ok(ident) = input.parse::<Ident>() {
-                last_ident = Some(ident);
-            }
-            // Recurse into braces
-            else if input.peek(syn::token::Brace) {
-                let content;
-                braced!(content in input);
-
-                if let Ok(inner) = content.parse::<Completion>() {
-                    if inner.last_ident.is_some() {
-                        last_ident = inner.last_ident;
-                    }
+impl VtuiMacro {
+    pub fn expand(self) -> proc_macro2::TokenStream {
+        // Collect all completions from all items
+        let completions: Vec<_> = self.items
+            .iter()
+            .flat_map(|item| item.completions())
+            .collect();
+        
+        quote! {
+            mod completions__ {
+                fn ignore() {
+                    #(#completions)*
                 }
             }
-            // Skip expressions
-            else if input.parse::<Expr>().is_ok() {
-                // ignore
-            }
-            // Skip commas
-            else if input.parse::<Token![,]>().is_ok() {
-                // ignore
-            }
-            // Fallback: consume one token unconditionally
-            else if input.parse::<TokenTree>().is_ok() {
-                // ignore
-            }
-            // Should never happen, but guarantees termination
-            else {
-                break;
-            }
+            Node::from(c)
         }
-
-        Ok(Self { last_ident })
     }
 }
 
 pub(crate) fn transform_vtui(input: TokenStream) -> TokenStream {
-    match syn::parse::<NodeDescription>(input.clone()) {
-        Ok(desc) => desc.expand(),
+    match syn::parse::<VtuiMacro>(input) {
+        Ok(vtui) => vtui.expand().into(),
         Err(err) => {
             let error = err.to_compile_error();
-            let completion = syn::parse::<Completion>(input).unwrap();
-
-            let last_ident = completion.last_ident;
-            let context = quote! {
-                mod completions__ {
-                    use vtui::prelude::Flow;
-                    fn complete() {
-                        #last_ident;
-                    }
-                }
-            };
-
             let tokens = quote! {
                 #error
-                #context
                 Node::from(c)
             };
-
             tokens.into()
         }
     }
 }
 
-pub fn is_enum_attr(expr: &Expr) -> Option<String> {
+pub fn is_expr_enum(expr: &Expr) -> Option<String> {
     let path = match expr {
         Expr::Path(p) => &p.path,
         Expr::Call(c) => match &*c.func {
@@ -183,6 +184,5 @@ pub fn is_enum_attr(expr: &Expr) -> Option<String> {
         },
         _ => return None,
     };
-
     Some(path.segments.first()?.ident.to_string())
 }
