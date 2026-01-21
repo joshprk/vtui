@@ -745,21 +745,13 @@ name = "vtui"
 version = "0.2.1"
 dependencies = [
  "crossterm",
- "ratatui",
- "vtui-core",
- "vtui-macros",
-]
-
-[[package]]
-name = "vtui-core"
-version = "0.2.1"
-dependencies = [
  "generational-box",
  "ratatui",
  "slotmap",
  "thiserror",
  "unicode-segmentation",
  "unicode-width",
+ "vtui-macros",
 ]
 
 [[package]]
