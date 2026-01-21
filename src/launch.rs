@@ -1,7 +1,7 @@
 use std::io;
 
-use vtui_core::{
-    component::FactoryFn, driver::Driver, error::RuntimeError, runtime::Runtime,
+use crate::{
+    component::FactoryFn, drivers::Driver, error::RuntimeError, runtime::Runtime,
     transport::EventSource,
 };
 

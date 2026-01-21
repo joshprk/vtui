@@ -11,8 +11,9 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
-use vtui_core::{
-    driver::Driver,
+
+use crate::{
+    drivers::Driver,
     input::{
         Input, KeyCode, MediaKeyCode, ModifierKeyCode, ModifierKeyDirection, MouseButton,
         MouseScrollDirection,

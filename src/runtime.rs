@@ -6,7 +6,7 @@ use crate::{
     arena::Arena,
     component::{FactoryFn, Node},
     context::Context,
-    driver::Driver,
+    drivers::Driver,
     error::RuntimeError,
     events::Message,
     transport::EventSource,
