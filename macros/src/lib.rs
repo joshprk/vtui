@@ -1,16 +1,31 @@
 use proc_macro::TokenStream;
+use quote::quote;
 
-use crate::{component::transform_component, vtui::transform_vtui};
+use crate::{component::ComponentFn, vtui::NodeInput};
 
 mod component;
 mod vtui;
 
 #[proc_macro_attribute]
-pub fn component(attr: TokenStream, item: TokenStream) -> TokenStream {
-    transform_component(attr, item)
+pub fn component(_: TokenStream, item: TokenStream) -> TokenStream {
+    match syn::parse::<ComponentFn>(item) {
+        Ok(input) => input.expand().into(),
+        Err(err) => err.into_compile_error().into(),
+    }
 }
 
 #[proc_macro]
 pub fn vtui(input: TokenStream) -> TokenStream {
-    transform_vtui(input)
+    match syn::parse::<NodeInput>(input) {
+        Ok(input) => input.expand().into(),
+        Err(err) => {
+            let err = err.into_compile_error();
+            let tokens = quote! {
+                #err
+                Node::from(c)
+            };
+
+            tokens.into()
+        }
+    }
 }
