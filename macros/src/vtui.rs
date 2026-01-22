@@ -62,9 +62,12 @@ impl NodeInput {
                 }
             }
 
-            Node::from(c)
-                #(#children)*
-                #(#flows)*
+            {
+                extern crate vtui as _vtui;
+                _vtui::component::Node::from(__vtui_component)
+                    #(#children)*
+                    #(#flows)*
+            }
         }
     }
 }

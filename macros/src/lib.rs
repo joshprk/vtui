@@ -21,8 +21,11 @@ pub fn vtui(input: TokenStream) -> TokenStream {
         Err(err) => {
             let err = err.into_compile_error();
             let tokens = quote! {
-                #err
-                Node::from(c)
+                {
+                    extern crate vtui as _vtui;
+                    #err
+                    _vtui::component::Node::from(__vtui_component)
+                }
             };
 
             tokens.into()
