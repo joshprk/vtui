@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::events::Event;
+use crate::events::{Event, MouseEvent};
 
 pub struct EventContext<'rt, E: Event> {
     event: &'rt E,
@@ -22,6 +22,12 @@ impl<'rt, E: Event> EventContext<'rt, E> {
 
     pub fn request_shutdown(&mut self) {
         self.context.shutdown_requested = true;
+    }
+}
+
+impl<'rt, E: MouseEvent> EventContext<'rt, E> {
+    pub fn is_mouse_target(&self) -> bool {
+        false
     }
 }
 
