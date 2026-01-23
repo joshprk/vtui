@@ -4,6 +4,10 @@ use crate::input::{KeyCode, MouseButton, MouseScrollDirection};
 
 pub trait Event: Send + 'static {}
 
+pub trait MouseEvent: Event {
+    fn coords(&self) -> (u16, u16);
+}
+
 pub struct Message {
     event_type_id: TypeId,
     event: Box<dyn Any + Send>,
@@ -44,6 +48,12 @@ pub struct MouseDown {
 
 impl Event for MouseDown {}
 
+impl MouseEvent for MouseDown {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
+
 pub struct MouseUp {
     pub x: u16,
     pub y: u16,
@@ -52,12 +62,24 @@ pub struct MouseUp {
 
 impl Event for MouseUp {}
 
+impl MouseEvent for MouseUp {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
+
 pub struct MouseHover {
     pub x: u16,
     pub y: u16,
 }
 
 impl Event for MouseHover {}
+
+impl MouseEvent for MouseHover {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
 
 pub struct MouseDrag {
     pub x: u16,
@@ -67,6 +89,12 @@ pub struct MouseDrag {
 
 impl Event for MouseDrag {}
 
+impl MouseEvent for MouseDrag {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
+
 pub struct MouseScroll {
     pub x: u16,
     pub y: u16,
@@ -74,6 +102,12 @@ pub struct MouseScroll {
 }
 
 impl Event for MouseScroll {}
+
+impl MouseEvent for MouseScroll {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
 
 pub struct KeyPress {
     pub key: KeyCode,
