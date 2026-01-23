@@ -47,30 +47,27 @@ impl Arena {
     where
         F: FnMut(&ArenaNode),
     {
-        let mut items = Vec::new();
         let mut stack = vec![self.root];
-        let mut visit_index: u32 = 0;
-
-        while let Some(id) = stack.pop() {
-            items.push((id, visit_index));
-            visit_index += 1;
-
-            for &(child, _) in self.inner[id].children.iter().rev() {
-                stack.push(child);
-            }
-        }
-
-        items.sort_unstable_by(|(a_id, a_ord), (b_id, b_ord)| {
-            let za = self.inner[*a_id].inner.get_layer();
-            let zb = self.inner[*b_id].inner.get_layer();
-            (za, *a_ord).cmp(&(zb, *b_ord))
-        });
 
         self.compute_layout(rect);
 
-        for (id, _) in items {
+        while let Some(id) = stack.pop() {
             let node = &self.inner[id];
             draw_fn(node);
+
+            let mut children = self.inner[id]
+                .children
+                .iter()
+                .map(|(c, _)| *c)
+                .collect::<Vec<_>>();
+
+            children.sort_by_key(|&child_id| {
+                self.inner[child_id].inner.get_layer()
+            });
+
+            for &child in children.iter().rev() {
+                stack.push(child);
+            }
         }
     }
 }
