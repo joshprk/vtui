@@ -61,9 +61,7 @@ impl Arena {
                 .map(|(c, _)| *c)
                 .collect::<Vec<_>>();
 
-            children.sort_by_key(|&child_id| {
-                self.inner[child_id].inner.get_layer()
-            });
+            children.sort_by_key(|&child_id| self.inner[child_id].inner.get_layer());
 
             for &child in children.iter().rev() {
                 stack.push(child);
