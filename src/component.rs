@@ -125,7 +125,10 @@ impl Composition {
         self.children.iter()
     }
 
-    pub fn split(&self, area: LogicalRect, measures: &[Measure]) -> Vec<LogicalRect> {
+    pub fn split<I>(&self, area: LogicalRect, measures: I) -> Vec<LogicalRect>
+    where
+        I: IntoIterator<Item = Measure>,
+    {
         compute_split(self.flow, area, measures)
     }
 }

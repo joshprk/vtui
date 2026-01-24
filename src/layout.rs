@@ -28,11 +28,10 @@ struct Variable {
     size: i32,
 }
 
-pub(crate) fn compute_split(
-    flow: Flow,
-    area: LogicalRect,
-    measures: &[Measure],
-) -> Vec<LogicalRect> {
+pub(crate) fn compute_split<I>(flow: Flow, area: LogicalRect, measures: I) -> Vec<LogicalRect>
+where
+    I: IntoIterator<Item = Measure>,
+{
     match flow {
         Flow::Horizontal => split_measures(area.x, area.width, measures)
             .map(|v| LogicalRect {
@@ -53,16 +52,15 @@ pub(crate) fn compute_split(
     }
 }
 
-fn split_measures(
-    start: i32,
-    viewport: i32,
-    measures: &[Measure],
-) -> impl Iterator<Item = Variable> {
+fn split_measures<I>(start: i32, viewport: i32, measures: I) -> impl Iterator<Item = Variable>
+where
+    I: IntoIterator<Item = Measure>,
+{
     let mut cursor = start;
 
-    measures.iter().map(move |measure| {
+    measures.into_iter().map(move |measure| {
         let size = match measure {
-            Measure::Exact(size) => *size,
+            Measure::Exact(size) => size,
             Measure::Percentage(percent) => (viewport as f64 * percent).round() as i32,
         };
 

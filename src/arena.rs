@@ -74,32 +74,29 @@ impl Arena {
     fn compute_layout(&mut self, rect: LogicalRect) {
         let root = self.root;
         self.inner[root].rect = rect;
-        self.compute_layout_recursive(root);
-    }
 
-    fn compute_layout_recursive(&mut self, id: NodeId) {
-        let (child_ids, measures, composition, parent_rect) = {
-            let node = &self.inner[id];
-            (
-                node.children.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
-                node.children.iter().map(|(_, m)| *m).collect::<Vec<_>>(),
-                &node.inner.composition(),
-                node.rect,
-            )
-        };
+        fn visit(arena: &mut Arena, id: NodeId) {
+            let node = &arena.inner[id];
 
-        if child_ids.is_empty() {
-            return;
+            let rect = node.rect;
+            let composition = node.inner.composition();
+            let children = node.children.clone();
+
+            if children.is_empty() {
+                return;
+            }
+
+            let rects = composition.split(rect, children.iter().map(|(_, m)| *m));
+
+            debug_assert_eq!(rects.len(), children.len());
+
+            for ((child_id, _), rect) in children.iter().zip(rects) {
+                arena.inner[*child_id].rect = rect;
+                visit(arena, *child_id);
+            }
         }
 
-        let rects = composition.split(parent_rect, &measures);
-
-        debug_assert_eq!(rects.len(), child_ids.len());
-
-        for ((child_id, rect), _) in child_ids.iter().zip(rects).zip(&measures) {
-            self.inner[*child_id].rect = rect;
-            self.compute_layout_recursive(*child_id);
-        }
+        visit(self, root);
     }
 
     fn push(&mut self, node: Node) -> NodeId {
