@@ -1,4 +1,4 @@
-use ratatui::buffer::Buffer;
+use ratatui::{Frame, buffer::Buffer};
 use slotmap::{SlotMap, new_key_type};
 
 use crate::{
@@ -24,16 +24,13 @@ impl Arena {
         arena
     }
 
-    pub fn update_for_each<F>(&mut self, mut update_fn: F)
-    where
-        F: FnMut(&mut ArenaNode),
-    {
+    pub fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
         let mut stack = vec![(self.root, false)];
 
         while let Some((id, visited)) = stack.pop() {
             if visited {
                 let node = &mut self.inner[id];
-                update_fn(node);
+                node.dispatch(msg, ctx);
             } else {
                 stack.push((id, true));
                 for &(child, _) in self.inner[id].children.iter().rev() {
@@ -43,17 +40,17 @@ impl Arena {
         }
     }
 
-    pub fn draw_for_each<F>(&mut self, rect: LogicalRect, mut draw_fn: F)
-    where
-        F: FnMut(&ArenaNode),
-    {
+    pub fn render(&mut self, frame: &mut Frame) {
+        let rect = frame.area().into();
+        let buf = frame.buffer_mut();
+
         let mut stack = vec![self.root];
 
         self.compute_layout(rect);
 
         while let Some(id) = stack.pop() {
             let node = &self.inner[id];
-            draw_fn(node);
+            node.render(buf);
 
             let mut children = self.inner[id]
                 .children
@@ -129,7 +126,7 @@ impl Arena {
     }
 }
 
-pub(crate) struct ArenaNode {
+struct ArenaNode {
     inner: Node,
     parent: Option<NodeId>,
     children: Vec<(NodeId, Measure)>,
@@ -137,14 +134,14 @@ pub(crate) struct ArenaNode {
 }
 
 impl ArenaNode {
-    pub(crate) fn render(&self, buffer: &mut Buffer) {
+    fn render(&self, buffer: &mut Buffer) {
         if let Some(renderer) = &self.inner.get_renderer() {
             let mut canvas = Canvas::new(self.rect, buffer);
             renderer(&mut canvas);
         }
     }
 
-    pub(crate) fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
+    fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
         if let Some(listeners) = self.inner.get_listeners(msg) {
             listeners.dispatch(msg, ctx);
         }

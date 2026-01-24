@@ -39,12 +39,7 @@ impl Runtime {
         let terminal = driver.terminal();
 
         terminal.draw(|f| {
-            let rect = f.area().into();
-            let buffer = f.buffer_mut();
-
-            self.arena.draw_for_each(rect, |node| {
-                node.render(buffer);
-            });
+            self.arena.render(f);
         })?;
 
         Ok(())
@@ -53,27 +48,20 @@ impl Runtime {
     pub fn update(&mut self) {
         let deadline = Instant::now() + Duration::from_millis(16);
         let msg = self.source.recv();
+        let ctx = &mut self.context;
 
-        self.dispatch(&msg);
+        self.arena.dispatch(&msg, ctx);
 
         while Instant::now() < deadline {
             let msg = self.source.recv_timeout(deadline - Instant::now());
 
             if let Some(msg) = msg {
-                self.dispatch(&msg);
+                self.arena.dispatch(&msg, ctx);
             }
         }
     }
 
     pub fn should_exit(&self) -> bool {
         self.context.shutdown_requested
-    }
-}
-
-impl Runtime {
-    fn dispatch(&mut self, msg: &Message) {
-        self.arena.update_for_each(|node| {
-            node.dispatch(msg, &mut self.context);
-        })
     }
 }
