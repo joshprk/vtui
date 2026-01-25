@@ -5,8 +5,7 @@ use crate::{
     canvas::{Canvas, LogicalRect},
     component::{Child, Node},
     context::{Context, UpdatePass, UpdateState},
-    events::Message,
-    layout::Measure,
+    layout::Measure, transport::Message,
 };
 
 new_key_type! { struct NodeId; }

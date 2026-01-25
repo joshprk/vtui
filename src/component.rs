@@ -3,10 +3,10 @@ use std::cell::{RefCell, RefMut};
 use crate::{
     canvas::{Canvas, LogicalRect},
     context::EventContext,
-    events::{Event, Message},
+    events::Event,
     layout::{Flow, Layer, Measure, compute_split},
     listeners::{DrawListener, ErasedListenerBucket, ListenerStore},
-    state::{State, StateOwner},
+    state::{State, StateOwner}, transport::Message,
 };
 
 pub type FactoryFn<P> = fn(Component, P) -> Node;
