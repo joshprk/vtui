@@ -4,7 +4,7 @@ use slotmap::{SlotMap, new_key_type};
 use crate::{
     canvas::{Canvas, LogicalRect},
     component::{Child, Node},
-    context::Context,
+    context::{Context, UpdatePass, UpdateState},
     events::Message,
     layout::Measure,
 };
@@ -13,7 +13,7 @@ new_key_type! { struct NodeId; }
 
 pub(crate) struct Arena {
     root: NodeId,
-    inner: SlotMap<NodeId, ArenaNode>,
+    nodes: SlotMap<NodeId, ArenaNode>,
     traversal: Option<Vec<NodeId>>,
 }
 
@@ -21,7 +21,7 @@ impl Arena {
     pub fn new(root: Node) -> Self {
         let mut arena = Self {
             root: NodeId::default(),
-            inner: SlotMap::default(),
+            nodes: SlotMap::default(),
             traversal: None,
         };
 
@@ -37,10 +37,12 @@ impl Arena {
         }
 
         let order = self.traversal.as_ref().unwrap().iter().rev();
+        let mut state = UpdateState::default();
 
         for &id in order {
-            let node = &mut self.inner[id];
-            node.dispatch(msg, ctx);
+            let node = &mut self.nodes[id];
+            let pass = UpdatePass::new(ctx, &mut state, node.rect);
+            node.dispatch(msg, pass);
         }
     }
 
@@ -55,7 +57,7 @@ impl Arena {
         self.compute_layout(rect);
 
         for &id in self.traversal.as_ref().unwrap() {
-            let node = &self.inner[id];
+            let node = &self.nodes[id];
             node.render(buf);
         }
     }
@@ -64,10 +66,10 @@ impl Arena {
 impl Arena {
     fn compute_layout(&mut self, rect: LogicalRect) {
         let root = self.root;
-        self.inner[root].rect = rect;
+        self.nodes[root].rect = rect;
 
         fn visit(arena: &mut Arena, id: NodeId) {
-            let node = &arena.inner[id];
+            let node = &arena.nodes[id];
 
             let rect = node.rect;
             let composition = node.inner.composition();
@@ -82,7 +84,7 @@ impl Arena {
             debug_assert_eq!(rects.len(), children.len());
 
             for ((child_id, _), rect) in children.iter().zip(rects) {
-                arena.inner[*child_id].rect = rect;
+                arena.nodes[*child_id].rect = rect;
                 visit(arena, *child_id);
             }
         }
@@ -99,13 +101,13 @@ impl Arena {
         while let Some(id) = stack.pop() {
             order.push(id);
 
-            let mut children = self.inner[id]
+            let mut children = self.nodes[id]
                 .children
                 .iter()
                 .map(|(c, _)| *c)
                 .collect::<Vec<_>>();
 
-            children.sort_by_key(|&child_id| self.inner[child_id].inner.get_layer());
+            children.sort_by_key(|&child_id| self.nodes[child_id].inner.get_layer());
 
             for &child in children.iter().rev() {
                 stack.push(child);
@@ -116,14 +118,13 @@ impl Arena {
     }
 
     fn push(&mut self, node: Node) -> NodeId {
-        let id = self.inner.insert(ArenaNode {
+        let id = self.nodes.insert(ArenaNode {
             inner: node,
-            parent: None,
             children: Vec::new(),
             rect: LogicalRect::new(0, 0, 0, 0),
         });
 
-        let children = self.inner[id]
+        let children = self.nodes[id]
             .inner
             .composition()
             .children()
@@ -137,8 +138,9 @@ impl Arena {
 
         for (child, measure) in children {
             let child_id = self.push(child);
-            self.inner[child_id].parent = Some(id);
-            self.inner[id].children.push((child_id, measure));
+            let parent = &mut self.nodes[id];
+
+            parent.children.push((child_id, measure));
         }
 
         self.traversal = None;
@@ -149,7 +151,6 @@ impl Arena {
 
 struct ArenaNode {
     inner: Node,
-    parent: Option<NodeId>,
     children: Vec<(NodeId, Measure)>,
     rect: LogicalRect,
 }
@@ -162,9 +163,9 @@ impl ArenaNode {
         }
     }
 
-    fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
+    fn dispatch(&mut self, msg: &Message, pass: UpdatePass<'_>) {
         if let Some(listeners) = self.inner.get_listeners(msg) {
-            listeners.dispatch(msg, ctx);
+            listeners.dispatch(msg, pass);
         }
     }
 }
