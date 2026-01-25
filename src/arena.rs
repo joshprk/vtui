@@ -36,11 +36,7 @@ impl Arena {
             self.compute_traversal();
         }
 
-        let order = self.traversal
-            .as_ref()
-            .unwrap()
-            .iter()
-            .rev();
+        let order = self.traversal.as_ref().unwrap().iter().rev();
 
         for &id in order {
             let node = &mut self.inner[id];
