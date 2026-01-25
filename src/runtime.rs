@@ -8,7 +8,6 @@ use crate::{
     context::Context,
     drivers::Driver,
     error::RuntimeError,
-    events::Message,
     transport::EventSource,
 };
 

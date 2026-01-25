@@ -2,7 +2,6 @@ use quote::{ToTokens, quote};
 use syn::{
     Token, braced,
     parse::{Parse, ParseStream, discouraged::Speculative},
-    punctuated::Punctuated,
     spanned::Spanned,
 };
 
