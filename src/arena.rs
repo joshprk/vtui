@@ -11,58 +11,56 @@ use crate::{
 
 new_key_type! { struct NodeId; }
 
-#[derive(Default)]
 pub(crate) struct Arena {
     root: NodeId,
     inner: SlotMap<NodeId, ArenaNode>,
+    traversal: Option<Vec<NodeId>>,
 }
 
 impl Arena {
     pub fn new(root: Node) -> Self {
-        let mut arena = Self::default();
+        let mut arena = Self {
+            root: NodeId::default(),
+            inner: SlotMap::default(),
+            traversal: None,
+        };
+
         arena.root = arena.push(root);
+        arena.compute_traversal();
+
         arena
     }
 
     pub fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
-        let mut stack = vec![(self.root, false)];
+        if self.traversal.is_none() {
+            self.compute_traversal();
+        }
 
-        while let Some((id, visited)) = stack.pop() {
-            if visited {
-                let node = &mut self.inner[id];
-                node.dispatch(msg, ctx);
-            } else {
-                stack.push((id, true));
-                for &(child, _) in self.inner[id].children.iter().rev() {
-                    stack.push((child, false));
-                }
-            }
+        let order = self.traversal
+            .as_ref()
+            .unwrap()
+            .iter()
+            .rev();
+
+        for &id in order {
+            let node = &mut self.inner[id];
+            node.dispatch(msg, ctx);
         }
     }
 
     pub fn render(&mut self, frame: &mut Frame) {
+        if self.traversal.is_none() {
+            self.compute_traversal();
+        }
+
         let rect = frame.area().into();
         let buf = frame.buffer_mut();
 
-        let mut stack = vec![self.root];
-
         self.compute_layout(rect);
 
-        while let Some(id) = stack.pop() {
+        for &id in self.traversal.as_ref().unwrap() {
             let node = &self.inner[id];
             node.render(buf);
-
-            let mut children = self.inner[id]
-                .children
-                .iter()
-                .map(|(c, _)| *c)
-                .collect::<Vec<_>>();
-
-            children.sort_by_key(|&child_id| self.inner[child_id].inner.get_layer());
-
-            for &child in children.iter().rev() {
-                stack.push(child);
-            }
         }
     }
 }
@@ -96,6 +94,31 @@ impl Arena {
         visit(self, root);
     }
 
+    fn compute_traversal(&mut self) {
+        let root = self.root;
+
+        let mut order = Vec::new();
+        let mut stack = vec![root];
+
+        while let Some(id) = stack.pop() {
+            order.push(id);
+
+            let mut children = self.inner[id]
+                .children
+                .iter()
+                .map(|(c, _)| *c)
+                .collect::<Vec<_>>();
+
+            children.sort_by_key(|&child_id| self.inner[child_id].inner.get_layer());
+
+            for &child in children.iter().rev() {
+                stack.push(child);
+            }
+        }
+
+        self.traversal = Some(order);
+    }
+
     fn push(&mut self, node: Node) -> NodeId {
         let id = self.inner.insert(ArenaNode {
             inner: node,
@@ -121,6 +144,8 @@ impl Arena {
             self.inner[child_id].parent = Some(id);
             self.inner[id].children.push((child_id, measure));
         }
+
+        self.traversal = None;
 
         id
     }
