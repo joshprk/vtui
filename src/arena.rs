@@ -95,7 +95,7 @@ impl Arena {
     fn compute_traversal(&mut self) {
         let root = self.root;
 
-        let mut order = Vec::new();
+        let mut order = Vec::with_capacity(self.nodes.len());
         let mut stack = vec![root];
 
         while let Some(id) = stack.pop() {
