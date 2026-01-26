@@ -1,5 +1,8 @@
 use std::{
-    any::{Any, TypeId}, sync::mpsc::{Receiver, Sender}, thread::JoinHandle, time::Duration
+    any::{Any, TypeId},
+    sync::mpsc::{Receiver, Sender},
+    thread::JoinHandle,
+    time::Duration,
 };
 
 use crate::{error::SendError, events::Event};

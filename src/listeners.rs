@@ -6,7 +6,8 @@ use std::{
 use crate::{
     canvas::Canvas,
     context::{EventContext, UpdatePass},
-    events::Event, transport::Message,
+    events::Event,
+    transport::Message,
 };
 
 pub(crate) type DrawListener = Box<dyn Fn(&mut Canvas)>;

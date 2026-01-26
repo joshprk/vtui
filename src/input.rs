@@ -1,7 +1,10 @@
-use crate::{events::{
-    KeyPress, KeyRelease, KeyRepeat, MouseDown, MouseDrag, MouseHover, MouseScroll,
-    MouseUp, Resize,
-}, transport::Message};
+use crate::{
+    events::{
+        KeyPress, KeyRelease, KeyRepeat, MouseDown, MouseDrag, MouseHover, MouseScroll, MouseUp,
+        Resize,
+    },
+    transport::Message,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModifierKeyCode {
