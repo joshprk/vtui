@@ -56,7 +56,9 @@ impl Arena {
 
         self.compute_layout(rect);
 
-        for &id in self.traversal.as_ref().unwrap() {
+        let order = self.traversal.as_ref().unwrap();
+
+        for &id in order {
             let node = &self.nodes[id];
             node.render(buf);
         }
