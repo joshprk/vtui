@@ -5,15 +5,16 @@ use std::{
 
 use crate::{
     canvas::Canvas,
-    context::{Context, EventContext},
-    events::{Event, Message},
+    context::{EventContext, UpdatePass},
+    events::Event,
+    transport::Message,
 };
 
 pub(crate) type DrawListener = Box<dyn Fn(&mut Canvas)>;
 pub(crate) type Listener<E> = Box<dyn FnMut(&mut EventContext<E>)>;
 
 pub(crate) trait ErasedListenerBucket {
-    fn dispatch(&mut self, msg: &Message, ctx: &mut Context);
+    fn dispatch(&mut self, msg: &Message, pass: UpdatePass<'_>);
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
@@ -56,9 +57,9 @@ impl<E: Event> ListenerBucket<E> {
 }
 
 impl<E: Event> ErasedListenerBucket for ListenerBucket<E> {
-    fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
+    fn dispatch<'a>(&mut self, msg: &Message, pass: UpdatePass<'_>) {
         let event = msg.downcast_ref::<E>().expect("TypeId mismatch");
-        let mut ctx = EventContext::new(event, ctx);
+        let mut ctx = EventContext::new(event, pass);
 
         for listener in &mut self.inner {
             listener(&mut ctx);

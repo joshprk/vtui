@@ -1,35 +1,9 @@
-use std::any::{Any, TypeId};
-
 use crate::input::{KeyCode, MouseButton, MouseScrollDirection};
 
 pub trait Event: Send + 'static {}
 
-pub struct Message {
-    event_type_id: TypeId,
-    event: Box<dyn Any + Send>,
-}
-
-impl<E: Event> From<E> for Message {
-    fn from(value: E) -> Self {
-        Self {
-            event_type_id: TypeId::of::<E>(),
-            event: Box::new(value),
-        }
-    }
-}
-
-impl Message {
-    pub fn new<E: Event>(event: E) -> Self {
-        Self::from(event)
-    }
-
-    pub(crate) fn event_type_id(&self) -> TypeId {
-        self.event_type_id
-    }
-
-    pub(crate) fn downcast_ref<E: Event>(&self) -> Option<&E> {
-        self.event.downcast_ref::<E>()
-    }
+pub trait MouseEvent: Event {
+    fn coords(&self) -> (u16, u16);
 }
 
 pub struct Tick {}
@@ -44,6 +18,12 @@ pub struct MouseDown {
 
 impl Event for MouseDown {}
 
+impl MouseEvent for MouseDown {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
+
 pub struct MouseUp {
     pub x: u16,
     pub y: u16,
@@ -52,12 +32,24 @@ pub struct MouseUp {
 
 impl Event for MouseUp {}
 
+impl MouseEvent for MouseUp {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
+
 pub struct MouseHover {
     pub x: u16,
     pub y: u16,
 }
 
 impl Event for MouseHover {}
+
+impl MouseEvent for MouseHover {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
 
 pub struct MouseDrag {
     pub x: u16,
@@ -67,6 +59,12 @@ pub struct MouseDrag {
 
 impl Event for MouseDrag {}
 
+impl MouseEvent for MouseDrag {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
+
 pub struct MouseScroll {
     pub x: u16,
     pub y: u16,
@@ -74,6 +72,12 @@ pub struct MouseScroll {
 }
 
 impl Event for MouseScroll {}
+
+impl MouseEvent for MouseScroll {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
 
 pub struct KeyPress {
     pub key: KeyCode,

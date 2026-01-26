@@ -1,71 +1,66 @@
-use ratatui::buffer::Buffer;
+use ratatui::{Frame, buffer::Buffer};
 use slotmap::{SlotMap, new_key_type};
 
 use crate::{
     canvas::{Canvas, LogicalRect},
     component::{Child, Node},
-    context::Context,
-    events::Message,
+    context::{Context, UpdatePass, UpdateState},
     layout::Measure,
+    transport::Message,
 };
 
 new_key_type! { struct NodeId; }
 
-#[derive(Default)]
 pub(crate) struct Arena {
     root: NodeId,
-    inner: SlotMap<NodeId, ArenaNode>,
+    nodes: SlotMap<NodeId, ArenaNode>,
+    traversal: Option<Vec<NodeId>>,
 }
 
 impl Arena {
     pub fn new(root: Node) -> Self {
-        let mut arena = Self::default();
+        let mut arena = Self {
+            root: NodeId::default(),
+            nodes: SlotMap::default(),
+            traversal: None,
+        };
+
         arena.root = arena.push(root);
+        arena.compute_traversal();
+
         arena
     }
 
-    pub fn update_for_each<F>(&mut self, mut update_fn: F)
-    where
-        F: FnMut(&mut ArenaNode),
-    {
-        let mut stack = vec![(self.root, false)];
+    pub fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
+        if self.traversal.is_none() {
+            self.compute_traversal();
+        }
 
-        while let Some((id, visited)) = stack.pop() {
-            if visited {
-                let node = &mut self.inner[id];
-                update_fn(node);
-            } else {
-                stack.push((id, true));
-                for &(child, _) in self.inner[id].children.iter().rev() {
-                    stack.push((child, false));
-                }
-            }
+        let order = self.traversal.as_ref().unwrap().iter().rev();
+        let mut state = UpdateState::default();
+
+        for &id in order {
+            let node = &mut self.nodes[id];
+            let pass = UpdatePass::new(ctx, &mut state, node.rect);
+            node.dispatch(msg, pass);
         }
     }
 
-    pub fn draw_for_each<F>(&mut self, rect: LogicalRect, mut draw_fn: F)
-    where
-        F: FnMut(&ArenaNode),
-    {
-        let mut stack = vec![self.root];
+    pub fn render(&mut self, frame: &mut Frame) {
+        if self.traversal.is_none() {
+            self.compute_traversal();
+        }
+
+        let rect = frame.area().into();
+        let buf = frame.buffer_mut();
 
         self.compute_layout(rect);
 
-        while let Some(id) = stack.pop() {
-            let node = &self.inner[id];
-            draw_fn(node);
+        let order = self.traversal.as_ref().unwrap();
 
-            let mut children = self.inner[id]
-                .children
-                .iter()
-                .map(|(c, _)| *c)
-                .collect::<Vec<_>>();
-
-            children.sort_by_key(|&child_id| self.inner[child_id].inner.get_layer());
-
-            for &child in children.iter().rev() {
-                stack.push(child);
-            }
+        for &id in order {
+            let node = &self.nodes[id];
+            node.render(buf);
         }
     }
 }
@@ -73,10 +68,10 @@ impl Arena {
 impl Arena {
     fn compute_layout(&mut self, rect: LogicalRect) {
         let root = self.root;
-        self.inner[root].rect = rect;
+        self.nodes[root].rect = rect;
 
         fn visit(arena: &mut Arena, id: NodeId) {
-            let node = &arena.inner[id];
+            let node = &arena.nodes[id];
 
             let rect = node.rect;
             let composition = node.inner.composition();
@@ -91,7 +86,7 @@ impl Arena {
             debug_assert_eq!(rects.len(), children.len());
 
             for ((child_id, _), rect) in children.iter().zip(rects) {
-                arena.inner[*child_id].rect = rect;
+                arena.nodes[*child_id].rect = rect;
                 visit(arena, *child_id);
             }
         }
@@ -99,15 +94,39 @@ impl Arena {
         visit(self, root);
     }
 
+    fn compute_traversal(&mut self) {
+        let root = self.root;
+
+        let mut order = Vec::with_capacity(self.nodes.len());
+        let mut stack = vec![root];
+
+        while let Some(id) = stack.pop() {
+            order.push(id);
+
+            let mut children = self.nodes[id]
+                .children
+                .iter()
+                .map(|(c, _)| *c)
+                .collect::<Vec<_>>();
+
+            children.sort_by_key(|&child_id| self.nodes[child_id].inner.get_layer());
+
+            for &child in children.iter().rev() {
+                stack.push(child);
+            }
+        }
+
+        self.traversal = Some(order);
+    }
+
     fn push(&mut self, node: Node) -> NodeId {
-        let id = self.inner.insert(ArenaNode {
+        let id = self.nodes.insert(ArenaNode {
             inner: node,
-            parent: None,
             children: Vec::new(),
             rect: LogicalRect::new(0, 0, 0, 0),
         });
 
-        let children = self.inner[id]
+        let children = self.nodes[id]
             .inner
             .composition()
             .children()
@@ -121,32 +140,34 @@ impl Arena {
 
         for (child, measure) in children {
             let child_id = self.push(child);
-            self.inner[child_id].parent = Some(id);
-            self.inner[id].children.push((child_id, measure));
+            let parent = &mut self.nodes[id];
+
+            parent.children.push((child_id, measure));
         }
+
+        self.traversal = None;
 
         id
     }
 }
 
-pub(crate) struct ArenaNode {
+struct ArenaNode {
     inner: Node,
-    parent: Option<NodeId>,
     children: Vec<(NodeId, Measure)>,
     rect: LogicalRect,
 }
 
 impl ArenaNode {
-    pub(crate) fn render(&self, buffer: &mut Buffer) {
+    fn render(&self, buffer: &mut Buffer) {
         if let Some(renderer) = &self.inner.get_renderer() {
             let mut canvas = Canvas::new(self.rect, buffer);
             renderer(&mut canvas);
         }
     }
 
-    pub(crate) fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
+    fn dispatch(&mut self, msg: &Message, pass: UpdatePass<'_>) {
         if let Some(listeners) = self.inner.get_listeners(msg) {
-            listeners.dispatch(msg, ctx);
+            listeners.dispatch(msg, pass);
         }
     }
 }
