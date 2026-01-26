@@ -29,17 +29,11 @@ impl<'e, E: Event> EventContext<'e, E> {
 }
 
 impl<'e, E: MouseEvent> EventContext<'e, E> {
-    pub fn on_mouse_hit<F>(&mut self, callback: F)
-    where
-        F: FnOnce(&mut EventContext<'e, E>),
-    {
+    pub fn is_mouse_hit<F>(&self) -> bool {
         let (x, y) = self.coords();
         let cursor = LogicalRect::new(x as i32, y as i32, 1, 1);
 
-        if self.pass.rect.intersects(cursor) && !self.pass.state.mouse_hit_handled {
-            self.pass.state.mouse_hit_handled = true;
-            callback(self);
-        }
+        self.pass.rect.intersects(cursor)
     }
 }
 
@@ -65,6 +59,4 @@ impl<'e> UpdatePass<'e> {
 }
 
 #[derive(Default)]
-pub(crate) struct UpdateState {
-    pub mouse_hit_handled: bool,
-}
+pub(crate) struct UpdateState {}
