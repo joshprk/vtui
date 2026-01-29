@@ -24,6 +24,15 @@ impl LogicalRect {
         }
     }
 
+    pub fn zeroed() -> Self {
+        LogicalRect {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+        }
+    }
+
     pub fn intersection(self, other: Self) -> Self {
         if !self.intersects(other) {
             return Self {
