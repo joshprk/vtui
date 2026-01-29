@@ -1,7 +1,9 @@
 use ratatui::Frame;
 use slotmap::{SlotMap, new_key_type};
 
-use crate::{canvas::Canvas, component::Node, context::EventContext, transport::Event};
+use crate::{
+    canvas::Canvas, component::Node, context::EventContext, layout::LogicalRect, transport::Event,
+};
 
 new_key_type! { struct NodeId; }
 
@@ -12,10 +14,11 @@ pub struct Arena {
 }
 
 impl From<Node> for Arena {
-    fn from(value: Node) -> Self {
+    fn from(node: Node) -> Self {
         let mut nodes = SlotMap::default();
-        let root = nodes.insert(value.into());
-        let traversal = vec![root];
+        let root = nodes.insert(node.into());
+        let traversal = compute_traversal(&nodes, root);
+
         Self {
             root,
             nodes,
@@ -26,12 +29,12 @@ impl From<Node> for Arena {
 
 impl Arena {
     pub fn render(&mut self, frame: &mut Frame) {
-        let rect = frame.area().into();
         let buf = frame.buffer_mut();
-        let mut canvas = Canvas::new(rect, buf);
 
         for &id in self.traversal.iter() {
             let node = &mut self.nodes[id];
+            let mut canvas = Canvas::new(node.rect, buf);
+
             node.node.render(&mut canvas);
         }
     }
@@ -46,10 +49,35 @@ impl Arena {
 
 struct ArenaNode {
     node: Node,
+    rect: LogicalRect,
+    children: Vec<NodeId>,
 }
 
 impl From<Node> for ArenaNode {
     fn from(node: Node) -> Self {
-        Self { node }
+        Self {
+            node,
+            rect: LogicalRect::zeroed(),
+            children: Vec::new(),
+        }
     }
+}
+
+fn compute_traversal(nodes: &SlotMap<NodeId, ArenaNode>, root: NodeId) -> Vec<NodeId> {
+    let mut order = Vec::with_capacity(nodes.len());
+    let mut stack = Vec::new();
+
+    stack.push(root);
+
+    while let Some(id) = stack.pop() {
+        order.push(id);
+
+        let node = &nodes[id];
+
+        for &child in node.children.iter().rev() {
+            stack.push(child);
+        }
+    }
+
+    order
 }
