@@ -16,7 +16,11 @@ impl From<Node> for Arena {
         let mut nodes = SlotMap::default();
         let root = nodes.insert(value.into());
         let traversal = vec![root];
-        Self { root, nodes, traversal }
+        Self {
+            root,
+            nodes,
+            traversal,
+        }
     }
 }
 
@@ -28,7 +32,7 @@ impl Arena {
 
         for &id in self.traversal.iter() {
             let node = &mut self.nodes[id];
-           node.node.render(&mut canvas);
+            node.node.render(&mut canvas);
         }
     }
 

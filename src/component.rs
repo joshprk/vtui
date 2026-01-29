@@ -43,10 +43,6 @@ impl From<Factory> for Node {
 }
 
 impl Node {
-    pub fn listeners(&mut self) -> &Listeners {
-        &self.listeners
-    }
-
     pub fn listeners_mut(&mut self) -> &mut Listeners {
         &mut self.listeners
     }
