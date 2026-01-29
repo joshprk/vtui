@@ -85,6 +85,7 @@ pub enum KeyCode {
     Modifier(ModifierKeyCode, ModifierKeyDirection),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Input {
     MouseDown {
         x: u16,

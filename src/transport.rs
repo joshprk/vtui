@@ -6,7 +6,7 @@ use crate::{
     errors::SendError,
 };
 
-pub trait Event: Any {}
+pub trait Event: Any + Send {}
 
 pub trait MouseEvent: Event {
     fn coords(&self) -> (u16, u16);
@@ -85,6 +85,7 @@ impl MessageBus {
     }
 }
 
+#[derive(Clone)]
 pub struct MessageSender {
     tx: flume::Sender<Message>,
 }

@@ -11,11 +11,12 @@ use crate::{
 pub fn launch(app: Factory) -> Result<(), RuntimeError> {
     let node = Node::from(app);
     let bus = MessageBus::new();
-
-    let mut runtime = Runtime::new(node, bus);
     let mut driver = CrosstermDriver::new(io::stdout())?;
 
     driver.setup()?;
+    driver.spawn_event_handler(bus.sender());
+
+    let mut runtime = Runtime::new(node, bus);
 
     loop {
         runtime.draw(&mut driver)?;
