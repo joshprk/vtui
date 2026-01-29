@@ -1,12 +1,9 @@
-use crate::input::{KeyCode, MouseButton, MouseScrollDirection};
+use crate::{
+    input::{KeyCode, MouseButton, MouseScrollDirection},
+    transport::{Event, MouseEvent},
+};
 
-pub trait Event: Send + 'static {}
-
-pub trait MouseEvent: Event {
-    fn coords(&self) -> (u16, u16);
-}
-
-pub struct Tick {}
+pub struct Tick;
 
 impl Event for Tick {}
 
@@ -15,8 +12,6 @@ pub struct MouseDown {
     pub y: u16,
     pub button: MouseButton,
 }
-
-impl Event for MouseDown {}
 
 impl MouseEvent for MouseDown {
     fn coords(&self) -> (u16, u16) {
@@ -30,8 +25,6 @@ pub struct MouseUp {
     pub button: MouseButton,
 }
 
-impl Event for MouseUp {}
-
 impl MouseEvent for MouseUp {
     fn coords(&self) -> (u16, u16) {
         (self.x, self.y)
@@ -42,8 +35,6 @@ pub struct MouseHover {
     pub x: u16,
     pub y: u16,
 }
-
-impl Event for MouseHover {}
 
 impl MouseEvent for MouseHover {
     fn coords(&self) -> (u16, u16) {
@@ -57,8 +48,6 @@ pub struct MouseDrag {
     pub button: MouseButton,
 }
 
-impl Event for MouseDrag {}
-
 impl MouseEvent for MouseDrag {
     fn coords(&self) -> (u16, u16) {
         (self.x, self.y)
@@ -70,8 +59,6 @@ pub struct MouseScroll {
     pub y: u16,
     pub direction: MouseScrollDirection,
 }
-
-impl Event for MouseScroll {}
 
 impl MouseEvent for MouseScroll {
     fn coords(&self) -> (u16, u16) {

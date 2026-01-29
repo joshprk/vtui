@@ -1,63 +1,46 @@
-use std::time::{Duration, Instant};
-
 use ratatui::prelude::Backend;
 
 use crate::{
     arena::Arena,
-    component::{FactoryFn, Node},
+    component::Node,
     context::Context,
     drivers::Driver,
-    error::RuntimeError,
-    transport::EventSource,
+    errors::RuntimeError,
+    transport::{Dispatch, MessageBus},
 };
 
 pub struct Runtime {
     arena: Arena,
     context: Context,
-    source: EventSource,
+    bus: MessageBus,
 }
 
 impl Runtime {
-    pub fn new(factory: FactoryFn<()>, source: EventSource) -> Self {
+    pub fn new(node: Node, bus: MessageBus) -> Self {
+        let arena = Arena::from(node);
         let context = Context::default();
-        let root = Node::from_factory(factory, ());
-        let arena = Arena::new(root);
-
         Self {
             arena,
             context,
-            source,
+            bus,
         }
     }
 
     pub fn draw<D>(&mut self, driver: &mut D) -> Result<(), RuntimeError>
     where
         D: Driver,
-        RuntimeError: From<<D::Backend as Backend>::Error>,
+        RuntimeError: From<<<D as Driver>::Backend as Backend>::Error>,
     {
         let terminal = driver.terminal();
-
-        terminal.draw(|f| {
-            self.arena.render(f);
-        })?;
+        terminal.draw(|f| self.arena.render(f))?;
 
         Ok(())
     }
 
     pub fn update(&mut self) {
-        let deadline = Instant::now() + Duration::from_millis(16);
-        let msg = self.source.recv();
-        let ctx = &mut self.context;
-
-        self.arena.dispatch(&msg, ctx);
-
-        while Instant::now() < deadline {
-            let msg = self.source.recv_timeout(deadline - Instant::now());
-
-            if let Some(msg) = msg {
-                self.arena.dispatch(&msg, ctx);
-            }
-        }
+        let msg = self.bus.recv();
+        let dispatch = Dispatch::new(&mut self.arena, &mut self.context);
+        msg.dispatch(dispatch);
     }
 
     pub fn should_exit(&self) -> bool {

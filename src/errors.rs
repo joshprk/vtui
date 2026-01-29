@@ -8,5 +8,11 @@ pub enum RuntimeError {
     Io(#[from] io::Error),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct SendError;
+
+impl<T> From<flume::SendError<T>> for SendError {
+    fn from(_: flume::SendError<T>) -> Self {
+        Self
+    }
+}

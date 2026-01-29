@@ -2,96 +2,7 @@ use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct LogicalRect {
-    pub x: i32,
-    pub y: i32,
-    pub width: i32,
-    pub height: i32,
-}
-
-impl From<Rect> for LogicalRect {
-    fn from(value: Rect) -> Self {
-        Self::new(value.x as i32, value.y as i32, value.width, value.height)
-    }
-}
-
-impl LogicalRect {
-    pub fn new(x: i32, y: i32, width: u16, height: u16) -> Self {
-        Self {
-            x,
-            y,
-            width: width as i32,
-            height: height as i32,
-        }
-    }
-
-    pub fn intersection(self, other: Self) -> Self {
-        if !self.intersects(other) {
-            return Self {
-                x: 0,
-                y: 0,
-                width: 0,
-                height: 0,
-            };
-        }
-
-        let x1 = self.x.max(other.x);
-        let y1 = self.y.max(other.y);
-        let x2 = self.right().min(other.right());
-        let y2 = self.bottom().min(other.bottom());
-
-        if x2 <= x1 || y2 <= y1 {
-            LogicalRect {
-                x: x1,
-                y: y1,
-                width: 0,
-                height: 0,
-            }
-        } else {
-            LogicalRect {
-                x: x1,
-                y: y1,
-                width: x2 - x1,
-                height: y2 - y1,
-            }
-        }
-    }
-
-    #[inline(always)]
-    pub fn intersects(self, other: Self) -> bool {
-        self.y < other.y + other.height
-            && self.y + self.height > other.y
-            && self.x < other.x + other.width
-            && self.x + self.width > other.x
-    }
-
-    pub fn with_offset(mut self, offset_x: i32, offset_y: i32) -> Self {
-        self.x -= offset_x;
-        self.y -= offset_y;
-        self
-    }
-
-    pub const fn area(self) -> i64 {
-        (self.width as i64) * (self.height as i64)
-    }
-
-    pub const fn left(self) -> i32 {
-        self.x
-    }
-
-    pub const fn right(self) -> i32 {
-        self.x.saturating_add(self.width)
-    }
-
-    pub const fn top(self) -> i32 {
-        self.y
-    }
-
-    pub const fn bottom(self) -> i32 {
-        self.y.saturating_add(self.height)
-    }
-}
+use crate::layout::LogicalRect;
 
 pub struct Canvas<'a> {
     buf: &'a mut Buffer,
@@ -112,6 +23,35 @@ impl<'a> Canvas<'a> {
 }
 
 impl Canvas<'_> {
+    pub fn buffer_mut(&mut self) -> &mut Buffer {
+        self.buf
+    }
+
+    pub fn rect(&self) -> LogicalRect {
+        self.rect
+    }
+
+    pub fn area(&self) -> LogicalRect {
+        LogicalRect::new(0, 0, self.rect.width as u16, self.rect.height as u16)
+    }
+
+    pub fn set_offset(&mut self, offset_x: i32, offset_y: i32) {
+        self.offset_x = offset_x;
+        self.offset_y = offset_y;
+    }
+
+    pub fn text<T, S>(&mut self, x: i32, y: i32, text: T, style: S)
+    where
+        T: AsRef<str>,
+        S: Into<Style>,
+    {
+        self.set_stringn(x, y, text, usize::MAX, style);
+    }
+
+    pub fn widget(&mut self, rect: impl Into<LogicalRect>, widget: impl Widget) {
+        self.render_widget(rect.into(), widget);
+    }
+
     fn set_stringn<T, S>(&mut self, x: i32, y: i32, text: T, max_width: usize, style: S)
     where
         T: AsRef<str>,
@@ -178,46 +118,7 @@ impl Canvas<'_> {
         }
     }
 
-    fn get_buf_column(&self, x: i32) -> i32 {
-        self.rect.x + x - self.offset_x
-    }
-
-    fn get_buf_row(&self, y: i32) -> i32 {
-        self.rect.y + y - self.offset_y
-    }
-
-    fn clipped(&self) -> bool {
-        false
-    }
-}
-
-impl Canvas<'_> {
-    pub fn buffer_mut(&mut self) -> &mut Buffer {
-        self.buf
-    }
-
-    pub fn rect(&self) -> LogicalRect {
-        self.rect
-    }
-
-    pub fn area(&self) -> LogicalRect {
-        LogicalRect::new(0, 0, self.rect.width as u16, self.rect.height as u16)
-    }
-
-    pub fn set_offset(&mut self, offset_x: i32, offset_y: i32) {
-        self.offset_x = offset_x;
-        self.offset_y = offset_y;
-    }
-
-    pub fn text<T, S>(&mut self, x: i32, y: i32, text: T, style: S)
-    where
-        T: AsRef<str>,
-        S: Into<Style>,
-    {
-        self.set_stringn(x, y, text, usize::MAX, style)
-    }
-
-    pub fn render_widget(&mut self, rect: LogicalRect, widget: impl Widget) {
+    fn render_widget(&mut self, rect: LogicalRect, widget: impl Widget) {
         let rect = rect.with_offset(self.offset_x - self.rect.x, self.offset_y - self.rect.y);
 
         if !rect.intersects(self.rect) {
@@ -273,5 +174,17 @@ impl Canvas<'_> {
             let dst = &mut self.buf.content[dst_row..dst_row + row_len];
             dst.clone_from_slice(src);
         }
+    }
+
+    fn get_buf_column(&self, x: i32) -> i32 {
+        self.rect.x + x - self.offset_x
+    }
+
+    fn get_buf_row(&self, y: i32) -> i32 {
+        self.rect.y + y - self.offset_y
+    }
+
+    fn clipped(&self) -> bool {
+        false
     }
 }

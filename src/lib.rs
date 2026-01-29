@@ -1,32 +1,21 @@
 pub use crate::launch::launch;
 
-pub mod canvas;
-pub mod component;
-pub mod context;
-pub mod drivers;
-pub mod error;
 pub mod events;
-pub mod input;
-pub mod layout;
-pub mod runtime;
-pub mod state;
-pub mod transport;
 
 pub mod prelude {
-    pub use crate::{
-        canvas::LogicalRect,
-        component::{Component, Node, Props},
-        drivers::Driver,
-        layout::{Flow, Measure},
-        state::State,
-    };
-    pub use vtui_macros::{component, vtui};
+    pub use crate::component::{Component, Node};
 }
 
 pub(crate) mod arena;
+pub(crate) mod canvas;
+pub(crate) mod component;
+pub(crate) mod context;
+pub(crate) mod drivers;
+pub(crate) mod errors;
+pub(crate) mod input;
+pub(crate) mod layout;
 pub(crate) mod listeners;
+pub(crate) mod runtime;
+pub(crate) mod transport;
 
 mod launch;
-
-#[cfg(not(any(feature = "crossterm")))]
-compile_error!("vtui requires a terminal driver. Enable one of: crossterm");

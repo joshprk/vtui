@@ -1,22 +1,29 @@
-use std::{
-    any::{Any, TypeId},
-    sync::mpsc::{Receiver, Sender},
-    thread::JoinHandle,
-    time::Duration,
+use core::any::Any;
+
+use crate::{
+    arena::Arena,
+    context::{Context, EventContext},
+    errors::SendError,
 };
 
-use crate::{error::SendError, events::Event};
+pub trait Event: Any {}
+
+pub trait MouseEvent: Event {
+    fn coords(&self) -> (u16, u16);
+}
+
+impl<E: MouseEvent> Event for E {}
 
 pub struct Message {
-    event_type_id: TypeId,
-    event: Box<dyn Any + Send>,
+    event: Box<dyn Event>,
+    dispatch: fn(Message, Dispatch<'_>),
 }
 
 impl<E: Event> From<E> for Message {
-    fn from(value: E) -> Self {
+    fn from(event: E) -> Self {
         Self {
-            event_type_id: TypeId::of::<E>(),
-            event: Box::new(value),
+            event: Box::new(event),
+            dispatch: Self::dispatch_impl::<E>,
         }
     }
 }
@@ -26,55 +33,72 @@ impl Message {
         Self::from(event)
     }
 
-    pub(crate) fn event_type_id(&self) -> TypeId {
-        self.event_type_id
+    pub fn dispatch(self, dispatch: Dispatch<'_>) {
+        (self.dispatch)(self, dispatch)
     }
 
-    pub(crate) fn downcast_ref<E: Event>(&self) -> Option<&E> {
-        self.event.downcast_ref::<E>()
+    fn dispatch_impl<E: Event>(msg: Self, dispatch: Dispatch<'_>) {
+        let event = (msg.event as Box<dyn Any>)
+            .downcast::<E>()
+            .expect("TypeId mismatch");
+        let ctx = EventContext::new(event, dispatch.context);
+        dispatch.arena.update(ctx);
     }
 }
 
-pub struct EventSource {
-    tx: Sender<Message>,
-    rx: Receiver<Message>,
+pub struct Dispatch<'d> {
+    arena: &'d mut Arena,
+    context: &'d mut Context,
 }
 
-impl Default for EventSource {
+impl<'d> Dispatch<'d> {
+    pub fn new(arena: &'d mut Arena, context: &'d mut Context) -> Self {
+        Self { arena, context }
+    }
+}
+
+pub struct MessageBus {
+    tx: flume::Sender<Message>,
+    rx: flume::Receiver<Message>,
+}
+
+impl Default for MessageBus {
     fn default() -> Self {
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = flume::bounded(Self::DEFAULT_CAPACITY);
         Self { tx, rx }
     }
 }
 
-impl EventSource {
+impl MessageBus {
+    const DEFAULT_CAPACITY: usize = 128;
+
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn subscribe(&self, producer: &mut impl EventProducer) {
-        let sink = EventSink(self.tx.clone());
-        producer.spawn(sink);
+    pub fn sender(&self) -> MessageSender {
+        MessageSender::from(self)
     }
 
-    pub(crate) fn recv(&self) -> Message {
-        self.rx.recv().unwrap()
-    }
-
-    pub(crate) fn recv_timeout(&self, budget: Duration) -> Option<Message> {
-        self.rx.recv_timeout(budget).ok()
+    pub fn recv(&self) -> Message {
+        self.rx.recv().expect("bus closed unexpectedly")
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct EventSink(Sender<Message>);
+pub struct MessageSender {
+    tx: flume::Sender<Message>,
+}
 
-impl EventSink {
-    pub fn send(&self, msg: Message) -> Result<(), SendError> {
-        self.0.send(msg).map_err(|_| SendError)
+impl From<&MessageBus> for MessageSender {
+    fn from(value: &MessageBus) -> Self {
+        Self {
+            tx: value.tx.clone(),
+        }
     }
 }
 
-pub trait EventProducer {
-    fn spawn(&mut self, tx: EventSink) -> JoinHandle<()>;
+impl MessageSender {
+    pub fn send(&self, msg: impl Into<Message>) -> Result<(), SendError> {
+        self.tx.send(msg.into()).map_err(|_| SendError)
+    }
 }
