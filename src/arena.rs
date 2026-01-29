@@ -8,14 +8,15 @@ new_key_type! { struct NodeId; }
 pub struct Arena {
     root: NodeId,
     nodes: SlotMap<NodeId, ArenaNode>,
+    traversal: Vec<NodeId>,
 }
 
 impl From<Node> for Arena {
     fn from(value: Node) -> Self {
         let mut nodes = SlotMap::default();
         let root = nodes.insert(value.into());
-
-        Self { root, nodes }
+        let traversal = vec![root];
+        Self { root, nodes, traversal }
     }
 }
 
@@ -25,13 +26,17 @@ impl Arena {
         let buf = frame.buffer_mut();
         let mut canvas = Canvas::new(rect, buf);
 
-        let root = &self.nodes[self.root];
-        root.node.render(&mut canvas);
+        for &id in self.traversal.iter() {
+            let node = &mut self.nodes[id];
+           node.node.render(&mut canvas);
+        }
     }
 
     pub fn update<E: Event>(&mut self, mut ctx: EventContext<E>) {
-        let root = &mut self.nodes[self.root];
-        root.node.listeners_mut().dispatch(&mut ctx);
+        for &id in self.traversal.iter().rev() {
+            let node = &mut self.nodes[id];
+            node.node.listeners_mut().dispatch(&mut ctx);
+        }
     }
 }
 
