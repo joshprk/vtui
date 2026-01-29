@@ -21,12 +21,12 @@ impl Listeners {
         F: FnMut(&mut EventContext<E>) + 'static,
     {
         let id = TypeId::of::<E>();
-        let cb = Box::new(callback);
+        let cb = Box::new(callback) as EventListener<E>;
 
         if let Some(vec) = self.get_mut::<E>() {
             vec.push(cb);
         } else {
-            let vec = vec![cb];
+            let vec = vec![cb] as Vec<EventListener<E>>;
             self.index.push(id);
             self.inner.push(Box::new(vec));
         }
