@@ -1,6 +1,6 @@
 extern crate alloc;
 
-pub use crate::launch::launch;
+pub use crate::launch::{LaunchBuilder, launch};
 
 pub mod events;
 
@@ -8,6 +8,7 @@ pub mod prelude {
     pub use crate::{
         component::{Component, Node},
         layout::{LogicalRect, Measure},
+        input::{KeyCode, MouseButton},
     };
 }
 
