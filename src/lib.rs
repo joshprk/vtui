@@ -1,9 +1,14 @@
+extern crate alloc;
+
 pub use crate::launch::launch;
 
 pub mod events;
 
 pub mod prelude {
-    pub use crate::component::{Component, Node};
+    pub use crate::{
+        component::{Component, Node},
+        layout::{LogicalRect, Measure},
+    };
 }
 
 pub(crate) mod arena;

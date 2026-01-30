@@ -10,17 +10,22 @@ pub struct LogicalRect {
 
 impl From<Rect> for LogicalRect {
     fn from(value: Rect) -> Self {
-        Self::new(value.x as i32, value.y as i32, value.width, value.height)
+        Self::new(
+            value.x as i32,
+            value.y as i32,
+            value.width as i32,
+            value.height as i32,
+        )
     }
 }
 
 impl LogicalRect {
-    pub fn new(x: i32, y: i32, width: u16, height: u16) -> Self {
+    pub fn new(x: i32, y: i32, width: i32, height: i32) -> Self {
         Self {
             x,
             y,
-            width: width as i32,
-            height: height as i32,
+            width,
+            height,
         }
     }
 
@@ -97,4 +102,10 @@ impl LogicalRect {
     pub const fn bottom(self) -> i32 {
         self.y.saturating_add(self.height)
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Measure {
+    Exact(i32),
+    Percentage(f64),
 }

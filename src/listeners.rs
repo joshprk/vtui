@@ -11,10 +11,6 @@ pub struct Listeners {
 }
 
 impl Listeners {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn push<E, F>(&mut self, callback: F)
     where
         E: Event,

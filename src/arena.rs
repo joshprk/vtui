@@ -50,7 +50,6 @@ impl Arena {
 struct ArenaNode {
     node: Node,
     rect: LogicalRect,
-    children: Vec<NodeId>,
 }
 
 impl From<Node> for ArenaNode {
@@ -58,7 +57,6 @@ impl From<Node> for ArenaNode {
         Self {
             node,
             rect: LogicalRect::zeroed(),
-            children: Vec::new(),
         }
     }
 }
@@ -71,12 +69,6 @@ fn compute_traversal(nodes: &SlotMap<NodeId, ArenaNode>, root: NodeId) -> Vec<No
 
     while let Some(id) = stack.pop() {
         order.push(id);
-
-        let node = &nodes[id];
-
-        for &child in node.children.iter().rev() {
-            stack.push(child);
-        }
     }
 
     order

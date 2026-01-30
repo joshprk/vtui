@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use core::cell::RefCell;
 
 use crate::{canvas::Canvas, context::EventContext, listeners::Listeners, transport::Event};
 
@@ -43,11 +43,15 @@ impl From<Factory> for Node {
 }
 
 impl Node {
-    pub fn listeners_mut(&mut self) -> &mut Listeners {
+    pub fn new(component: Component) -> Self {
+        Node::from(component)
+    }
+
+    pub(crate) fn listeners_mut(&mut self) -> &mut Listeners {
         &mut self.listeners
     }
 
-    pub fn render(&self, canvas: &mut Canvas) {
+    pub(crate) fn render(&self, canvas: &mut Canvas) {
         if let Some(renderer) = &self.draw_fn {
             renderer(canvas);
         }

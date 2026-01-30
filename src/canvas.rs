@@ -32,7 +32,7 @@ impl Canvas<'_> {
     }
 
     pub fn area(&self) -> LogicalRect {
-        LogicalRect::new(0, 0, self.rect.width as u16, self.rect.height as u16)
+        LogicalRect::new(0, 0, self.rect.width, self.rect.height)
     }
 
     pub fn set_offset(&mut self, offset_x: i32, offset_y: i32) {
