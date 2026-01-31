@@ -1,17 +1,13 @@
-use std::io;
-
 use ratatui::{Terminal, prelude::Backend};
 
-#[cfg(feature = "crossterm")]
-pub use self::crossterm::CrosstermDriver;
+pub use crate::drivers::crossterm::CrosstermDriver;
 
-#[cfg(feature = "crossterm")]
 mod crossterm;
 
 pub trait Driver {
     type Backend: Backend;
 
-    fn setup(&mut self) -> io::Result<()>;
-    fn teardown(self) -> io::Result<()>;
+    fn setup(&mut self) -> Result<(), <Self::Backend as Backend>::Error>;
+    fn teardown(self) -> Result<(), <Self::Backend as Backend>::Error>;
     fn terminal(&mut self) -> &mut Terminal<Self::Backend>;
 }

@@ -1,71 +1,46 @@
-use std::{
-    any::{Any, TypeId},
-    collections::HashMap,
-};
+use core::any::{Any, TypeId};
 
-use crate::{
-    canvas::Canvas,
-    context::{Context, EventContext},
-    events::{Event, Message},
-};
+use crate::{context::EventContext, transport::Event};
 
-pub(crate) type DrawListener = Box<dyn Fn(&mut Canvas)>;
-pub(crate) type Listener<E> = Box<dyn FnMut(&mut EventContext<E>)>;
-
-pub(crate) trait ErasedListenerBucket {
-    fn dispatch(&mut self, msg: &Message, ctx: &mut Context);
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
+type EventListener<E> = Box<dyn FnMut(&mut EventContext<E>)>;
 
 #[derive(Default)]
-pub(crate) struct ListenerStore {
-    inner: HashMap<TypeId, Box<dyn ErasedListenerBucket>>,
+pub struct Listeners {
+    inner: Vec<Box<dyn Any>>,
+    index: Vec<TypeId>,
 }
 
-impl ListenerStore {
-    pub fn get_mut(&mut self, msg: &Message) -> Option<&mut Box<dyn ErasedListenerBucket>> {
-        let type_id = msg.event_type_id();
-        self.inner.get_mut(&type_id)
-    }
+impl Listeners {
+    pub fn push<E, F>(&mut self, callback: F)
+    where
+        E: Event,
+        F: FnMut(&mut EventContext<E>) + 'static,
+    {
+        let id = TypeId::of::<E>();
+        let cb = Box::new(callback) as EventListener<E>;
 
-    pub fn push<E: Event>(&mut self, listener: Listener<E>) {
-        let type_id = TypeId::of::<E>();
-        self.inner
-            .entry(type_id)
-            .or_insert(Box::new(ListenerBucket::<E>::new()))
-            .as_any_mut()
-            .downcast_mut::<ListenerBucket<E>>()
-            .expect("TypeId mismatch")
-            .push(listener)
-    }
-}
-
-#[derive(Default)]
-pub(crate) struct ListenerBucket<E: Event> {
-    inner: Vec<Listener<E>>,
-}
-
-impl<E: Event> ListenerBucket<E> {
-    pub fn new() -> Self {
-        Self { inner: Vec::new() }
-    }
-
-    pub fn push(&mut self, listener: Listener<E>) {
-        self.inner.push(listener)
-    }
-}
-
-impl<E: Event> ErasedListenerBucket for ListenerBucket<E> {
-    fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
-        let event = msg.downcast_ref::<E>().expect("TypeId mismatch");
-        let mut ctx = EventContext::new(event, ctx);
-
-        for listener in &mut self.inner {
-            listener(&mut ctx);
+        if let Some(vec) = self.get_mut::<E>() {
+            vec.push(cb);
+        } else {
+            let vec = vec![cb] as Vec<EventListener<E>>;
+            self.index.push(id);
+            self.inner.push(Box::new(vec));
         }
     }
 
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
+    pub fn dispatch<E: Event>(&mut self, event: &mut EventContext<E>) {
+        if let Some(listeners) = self.get_mut::<E>() {
+            listeners.iter_mut().for_each(|cb| cb(event));
+        }
+    }
+
+    fn get_mut<E: Event>(&mut self) -> Option<&mut Vec<EventListener<E>>> {
+        let idx = self.index.iter().position(|&id| id == TypeId::of::<E>())?;
+
+        let slice = self.inner[idx]
+            .downcast_mut::<Vec<EventListener<E>>>()
+            .expect("listener indices malformed");
+
+        Some(slice)
     }
 }

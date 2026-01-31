@@ -1,134 +1,86 @@
-use std::cell::{RefCell, RefMut};
+use core::cell::RefCell;
 
 use crate::{
-    canvas::{Canvas, LogicalRect},
+    canvas::Canvas,
     context::EventContext,
-    events::{Event, Message},
-    layout::{Flow, Layer, Measure, compute_split},
-    listeners::{DrawListener, ErasedListenerBucket, ListenerStore},
-    state::{State, StateOwner},
+    layout::Measure,
+    listeners::Listeners,
+    state::{State, StateStore},
+    transport::Event,
 };
 
-pub type FactoryFn<P> = fn(Component, P) -> Node;
+pub type BoxedRenderer = Box<dyn Fn(&mut Canvas)>;
+pub type Factory<P = ()> = fn(Component, P) -> Node;
 
+/// Types that are used when initializing a [`Node`].
 pub trait Props: Clone + 'static {}
 
 impl Props for () {}
 
+/// An UI element with rendering and event listening behavior.
 #[derive(Default)]
 pub struct Component {
-    inner: RefCell<Spec>,
+    node: RefCell<Node>,
 }
 
 impl Component {
-    fn get_inner_mut(&self) -> RefMut<'_, Spec> {
-        self.inner.borrow_mut()
-    }
-}
-
-impl Component {
-    pub fn draw(&self, listener: impl Fn(&mut Canvas) + 'static) {
-        self.get_inner_mut().renderer = Some(Box::new(listener));
+    /// Defines a render function for this component.
+    pub fn draw(&self, renderer: impl Fn(&mut Canvas) + 'static) {
+        let renderer = Box::new(renderer);
+        self.node.borrow_mut().draw_fn = Some(renderer);
     }
 
-    pub fn listen<E: Event>(&self, listener: impl FnMut(&mut EventContext<E>) + 'static) {
-        self.get_inner_mut().listeners.push(Box::new(listener));
+    /// Adds a listener for an event.
+    ///
+    /// Listeners are sequential and single-threaded on the runtime thread. It is important to
+    /// never run any blocking tasks to avoid UI jitters.
+    pub fn listen<E>(&self, callback: impl FnMut(&mut EventContext<E>) + 'static)
+    where
+        E: Event,
+    {
+        self.node.borrow_mut().listeners.push(callback);
     }
 
+    /// Initializes component state.
+    ///
+    /// State is owned by the component and can be passed down to children.
     pub fn state<T: 'static>(&self, value: T) -> State<T> {
-        self.get_inner_mut().state.insert(value)
+        self.node.borrow_mut().state.insert(value)
     }
 }
 
+/// A compiled description of an application's UI tree.
+#[derive(Default)]
 pub struct Node {
-    spec: Spec,
-    composition: Composition,
+    pub(crate) draw_fn: Option<BoxedRenderer>,
+    pub(crate) listeners: Listeners,
+    pub(crate) state: StateStore,
+    pub(crate) children: Vec<(Measure, Node)>,
 }
 
 impl From<Component> for Node {
-    fn from(value: Component) -> Self {
-        let Component { inner } = value;
+    fn from(component: Component) -> Self {
+        component.node.into_inner()
+    }
+}
 
-        Self {
-            spec: inner.into_inner(),
-            composition: Composition::default(),
-        }
+impl From<Factory> for Node {
+    fn from(factory: Factory) -> Self {
+        factory(Component::default(), ())
     }
 }
 
 impl Node {
+    /// Creates a new node.
     pub fn new(component: Component) -> Self {
-        Self::from(component)
+        Node::from(component)
     }
 
-    pub fn from_factory<P: Props>(factory: FactoryFn<P>, props: P) -> Self {
-        factory(Component::default(), props)
-    }
-
-    pub(crate) fn get_renderer(&self) -> Option<&DrawListener> {
-        self.spec.renderer.as_ref()
-    }
-
-    pub(crate) fn get_listeners(
-        &mut self,
-        msg: &Message,
-    ) -> Option<&mut Box<dyn ErasedListenerBucket>> {
-        self.spec.listeners.get_mut(msg)
-    }
-
-    pub(crate) fn composition(&self) -> &Composition {
-        &self.composition
-    }
-}
-
-impl Node {
-    pub fn child<P: Props>(mut self, measure: Measure, factory: FactoryFn<P>, props: P) -> Self {
-        let factory = Box::new(move || Node::from_factory(factory, props.clone()));
-        self.composition.push(Child::Static(factory), measure);
+    /// Adds a static child to this node.
+    pub fn child<P: Props>(mut self, measure: Measure, factory: Factory<P>, props: P) -> Self {
+        let component = Component::default();
+        let node = factory(component, props);
+        self.children.push((measure, node));
         self
-    }
-
-    pub fn set_flow(mut self, flow: Flow) -> Self {
-        self.composition.flow = flow;
-        self
-    }
-
-    pub(crate) fn get_layer(&self) -> Layer {
-        self.composition.layer
-    }
-}
-
-#[derive(Default)]
-pub(crate) struct Spec {
-    pub renderer: Option<DrawListener>,
-    pub listeners: ListenerStore,
-    pub state: StateOwner,
-}
-
-pub(crate) enum Child {
-    Static(Box<dyn Fn() -> Node>),
-}
-
-#[derive(Default)]
-pub(crate) struct Composition {
-    flow: Flow,
-    layer: Layer,
-    children: Vec<(Child, Measure)>,
-}
-
-impl Composition {
-    pub fn push(&mut self, child: Child, measure: Measure) {
-        self.children.push((child, measure));
-    }
-
-    pub fn children(&self) -> impl Iterator<Item = &(Child, Measure)> {
-        self.children.iter()
-    }
-
-    pub fn split<I>(&self, area: LogicalRect, measures: I) -> Vec<LogicalRect>
-    where
-        I: IntoIterator<Item = Measure>,
-    {
-        compute_split(self.flow, area, measures)
     }
 }

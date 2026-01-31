@@ -1,7 +1,4 @@
-use std::{
-    io::{self, Write},
-    thread::JoinHandle,
-};
+use std::io::Write;
 
 use crossterm::{
     event::{
@@ -10,7 +7,10 @@ use crossterm::{
     },
     terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{Terminal, prelude::CrosstermBackend};
+use ratatui::{
+    Terminal,
+    prelude::{Backend, CrosstermBackend},
+};
 
 use crate::{
     drivers::Driver,
@@ -18,25 +18,17 @@ use crate::{
         Input, KeyCode, MediaKeyCode, ModifierKeyCode, ModifierKeyDirection, MouseButton,
         MouseScrollDirection,
     },
-    transport::{EventProducer, EventSink},
+    transport::MessageSender,
 };
 
 pub struct CrosstermDriver<W: Write> {
-    pub terminal: Terminal<CrosstermBackend<W>>,
-}
-
-impl<W: Write> CrosstermDriver<W> {
-    pub fn new(writer: W) -> Self {
-        let backend = CrosstermBackend::new(writer);
-        let terminal = Terminal::new(backend).unwrap();
-        Self { terminal }
-    }
+    terminal: Terminal<CrosstermBackend<W>>,
 }
 
 impl<W: Write> Driver for CrosstermDriver<W> {
     type Backend = CrosstermBackend<W>;
 
-    fn setup(&mut self) -> io::Result<()> {
+    fn setup(&mut self) -> Result<(), <Self::Backend as Backend>::Error> {
         crossterm::terminal::enable_raw_mode()?;
         crossterm::execute!(
             self.terminal.backend_mut(),
@@ -48,7 +40,7 @@ impl<W: Write> Driver for CrosstermDriver<W> {
         Ok(())
     }
 
-    fn teardown(mut self) -> io::Result<()> {
+    fn teardown(mut self) -> Result<(), <Self::Backend as Backend>::Error> {
         crossterm::terminal::disable_raw_mode()?;
         crossterm::execute!(
             self.terminal.backend_mut(),
@@ -60,13 +52,21 @@ impl<W: Write> Driver for CrosstermDriver<W> {
         Ok(())
     }
 
-    fn terminal(&mut self) -> &mut Terminal<Self::Backend> {
+    fn terminal(&mut self) -> &mut ratatui::Terminal<Self::Backend> {
         &mut self.terminal
     }
 }
 
-impl<W: Write> EventProducer for CrosstermDriver<W> {
-    fn spawn(&mut self, tx: EventSink) -> JoinHandle<()> {
+impl<W: Write> CrosstermDriver<W> {
+    pub fn new(writer: W) -> Result<Self, <<Self as Driver>::Backend as Backend>::Error> {
+        let backend = CrosstermBackend::new(writer);
+        let terminal = Terminal::new(backend)?;
+        Ok(Self { terminal })
+    }
+}
+
+impl<W: Write> CrosstermDriver<W> {
+    pub fn spawn_event_handler(&self, tx: MessageSender) {
         std::thread::spawn(move || {
             loop {
                 let event = crossterm::event::read().expect("crossterm::event::read failed");
@@ -80,7 +80,7 @@ impl<W: Write> EventProducer for CrosstermDriver<W> {
                     break;
                 }
             }
-        })
+        });
     }
 }
 

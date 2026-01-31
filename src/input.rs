@@ -1,6 +1,9 @@
-use crate::events::{
-    KeyPress, KeyRelease, KeyRepeat, Message, MouseDown, MouseDrag, MouseHover, MouseScroll,
-    MouseUp, Resize,
+use crate::{
+    events::{
+        KeyPress, KeyRelease, KeyRepeat, MouseDown, MouseDrag, MouseHover, MouseScroll, MouseUp,
+        Resize,
+    },
+    transport::Message,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,6 +85,7 @@ pub enum KeyCode {
     Modifier(ModifierKeyCode, ModifierKeyDirection),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Input {
     MouseDown {
         x: u16,
@@ -122,9 +126,9 @@ pub enum Input {
     },
 }
 
-impl Input {
-    pub fn to_message(self) -> Message {
-        match self {
+impl From<Input> for Message {
+    fn from(value: Input) -> Self {
+        match value {
             Input::MouseDown { x, y, button } => Message::new(MouseDown { x, y, button }),
             Input::MouseUp { x, y, button } => Message::new(MouseUp { x, y, button }),
             Input::MouseHover { x, y } => Message::new(MouseHover { x, y }),
@@ -135,5 +139,11 @@ impl Input {
             Input::KeyRelease { key } => Message::new(KeyRelease { key }),
             Input::Resize { width, height } => Message::new(Resize { width, height }),
         }
+    }
+}
+
+impl Input {
+    pub fn to_message(self) -> Message {
+        Message::from(self)
     }
 }

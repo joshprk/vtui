@@ -1,24 +1,31 @@
 use std::io;
 
 use crate::{
-    component::FactoryFn, drivers::Driver, error::RuntimeError, runtime::Runtime,
-    transport::EventSource,
+    component::{Factory, Node},
+    drivers::{CrosstermDriver, Driver},
+    errors::RuntimeError,
+    runtime::Runtime,
+    transport::MessageBus,
 };
-
-use crate::drivers::CrosstermDriver;
 
 #[derive(Default)]
 pub struct LaunchBuilder {}
 
 impl LaunchBuilder {
-    pub fn launch(self, factory: FactoryFn<()>) -> Result<(), RuntimeError> {
-        let source = EventSource::new();
-        let mut driver = CrosstermDriver::new(io::stdout());
+    pub fn new() -> Self {
+        LaunchBuilder::default()
+    }
 
-        source.subscribe(&mut driver);
+    pub fn launch(self, app: Factory) -> Result<(), RuntimeError> {
+        let node = Node::from(app);
+
+        let bus = MessageBus::new();
+        let mut driver = CrosstermDriver::new(io::stdout())?;
+
         driver.setup()?;
+        driver.spawn_event_handler(bus.sender());
 
-        let mut runtime = Runtime::new(factory, source);
+        let mut runtime = Runtime::new(node, bus);
 
         loop {
             runtime.draw(&mut driver)?;
@@ -30,10 +37,19 @@ impl LaunchBuilder {
         }
 
         driver.teardown()?;
+
         Ok(())
     }
 }
 
-pub fn launch(app: FactoryFn<()>) {
-    LaunchBuilder::default().launch(app).unwrap()
+/// Launches an app with the given root component.
+///
+/// # Panics
+///
+/// This function is allowed to panic if the event loop errors. If you want to handle panics in a
+/// controlled manner, use the [`LaunchBuilder`] manually.
+pub fn launch(app: Factory) {
+    LaunchBuilder::new()
+        .launch(app)
+        .expect("app panicked unexpectedly");
 }

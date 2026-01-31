@@ -1,152 +1,135 @@
-use ratatui::buffer::Buffer;
+use alloc::collections::VecDeque;
+
+use ratatui::Frame;
 use slotmap::{SlotMap, new_key_type};
 
 use crate::{
-    canvas::{Canvas, LogicalRect},
-    component::{Child, Node},
-    context::Context,
-    events::Message,
-    layout::Measure,
+    canvas::Canvas,
+    component::{BoxedRenderer, Node},
+    context::EventContext,
+    layout::{LogicalRect, Measure},
+    listeners::Listeners,
+    state::StateStore,
+    transport::Event,
 };
 
 new_key_type! { struct NodeId; }
 
-#[derive(Default)]
-pub(crate) struct Arena {
+pub struct Arena {
     root: NodeId,
-    inner: SlotMap<NodeId, ArenaNode>,
+    nodes: SlotMap<NodeId, ArenaNode>,
+    traversal: Vec<NodeId>,
 }
 
-impl Arena {
-    pub fn new(root: Node) -> Self {
-        let mut arena = Self::default();
-        arena.root = arena.push(root);
-        arena
-    }
+impl From<Node> for Arena {
+    fn from(root: Node) -> Self {
+        let mut nodes = SlotMap::default();
+        let root = populate_arena(&mut nodes, root);
+        let traversal = compute_traversal(&nodes, root);
 
-    pub fn update_for_each<F>(&mut self, mut update_fn: F)
-    where
-        F: FnMut(&mut ArenaNode),
-    {
-        let mut stack = vec![(self.root, false)];
-
-        while let Some((id, visited)) = stack.pop() {
-            if visited {
-                let node = &mut self.inner[id];
-                update_fn(node);
-            } else {
-                stack.push((id, true));
-                for &(child, _) in self.inner[id].children.iter().rev() {
-                    stack.push((child, false));
-                }
-            }
-        }
-    }
-
-    pub fn draw_for_each<F>(&mut self, rect: LogicalRect, mut draw_fn: F)
-    where
-        F: FnMut(&ArenaNode),
-    {
-        let mut stack = vec![self.root];
-
-        self.compute_layout(rect);
-
-        while let Some(id) = stack.pop() {
-            let node = &self.inner[id];
-            draw_fn(node);
-
-            let mut children = self.inner[id]
-                .children
-                .iter()
-                .map(|(c, _)| *c)
-                .collect::<Vec<_>>();
-
-            children.sort_by_key(|&child_id| self.inner[child_id].inner.get_layer());
-
-            for &child in children.iter().rev() {
-                stack.push(child);
-            }
+        Self {
+            root,
+            nodes,
+            traversal,
         }
     }
 }
 
 impl Arena {
-    fn compute_layout(&mut self, rect: LogicalRect) {
-        let root = self.root;
-        self.inner[root].rect = rect;
+    pub fn render(&mut self, frame: &mut Frame) {
+        let buf = frame.buffer_mut();
 
-        fn visit(arena: &mut Arena, id: NodeId) {
-            let node = &arena.inner[id];
+        for &id in self.traversal.iter() {
+            let node = &mut self.nodes[id];
+            let mut canvas = Canvas::new(node.rect, buf);
 
-            let rect = node.rect;
-            let composition = node.inner.composition();
-            let children = node.children.clone();
-
-            if children.is_empty() {
-                return;
-            }
-
-            let rects = composition.split(rect, children.iter().map(|(_, m)| *m));
-
-            debug_assert_eq!(rects.len(), children.len());
-
-            for ((child_id, _), rect) in children.iter().zip(rects) {
-                arena.inner[*child_id].rect = rect;
-                visit(arena, *child_id);
-            }
+            node.render(&mut canvas);
         }
-
-        visit(self, root);
     }
 
-    fn push(&mut self, node: Node) -> NodeId {
-        let id = self.inner.insert(ArenaNode {
-            inner: node,
-            parent: None,
-            children: Vec::new(),
-            rect: LogicalRect::new(0, 0, 0, 0),
-        });
-
-        let children = self.inner[id]
-            .inner
-            .composition()
-            .children()
-            .map(|(child, measure)| {
-                let child = match child {
-                    Child::Static(factory) => factory(),
-                };
-                (child, *measure)
-            })
-            .collect::<Vec<(Node, Measure)>>();
-
-        for (child, measure) in children {
-            let child_id = self.push(child);
-            self.inner[child_id].parent = Some(id);
-            self.inner[id].children.push((child_id, measure));
+    pub fn update<E: Event>(&mut self, mut ctx: EventContext<E>) {
+        for &id in self.traversal.iter().rev() {
+            let node = &mut self.nodes[id];
+            node.listeners.dispatch(&mut ctx);
         }
-
-        id
     }
 }
 
-pub(crate) struct ArenaNode {
-    inner: Node,
-    parent: Option<NodeId>,
-    children: Vec<(NodeId, Measure)>,
+struct ArenaNode {
+    draw_fn: Option<BoxedRenderer>,
+    listeners: Listeners,
     rect: LogicalRect,
+    #[allow(dead_code)]
+    state: StateStore,
+    children: Vec<(Measure, NodeId)>,
 }
 
 impl ArenaNode {
-    pub(crate) fn render(&self, buffer: &mut Buffer) {
-        if let Some(renderer) = &self.inner.get_renderer() {
-            let mut canvas = Canvas::new(self.rect, buffer);
-            renderer(&mut canvas);
+    fn render(&self, canvas: &mut Canvas) {
+        if let Some(renderer) = &self.draw_fn {
+            renderer(canvas);
+        }
+    }
+}
+
+fn compute_traversal(nodes: &SlotMap<NodeId, ArenaNode>, root: NodeId) -> Vec<NodeId> {
+    let mut order = Vec::with_capacity(nodes.len());
+    let mut stack = Vec::new();
+
+    stack.push(root);
+
+    while let Some(id) = stack.pop() {
+        order.push(id);
+
+        for &(_, child_id) in nodes[id].children.iter().rev() {
+            stack.push(child_id);
         }
     }
 
-    pub(crate) fn dispatch(&mut self, msg: &Message, ctx: &mut Context) {
-        if let Some(listeners) = self.inner.get_listeners(msg) {
-            listeners.dispatch(msg, ctx);
+    order
+}
+
+fn populate_arena(nodes: &mut SlotMap<NodeId, ArenaNode>, root: Node) -> NodeId {
+    let mut queue = VecDeque::new();
+
+    let Node {
+        draw_fn,
+        listeners,
+        state,
+        children,
+    } = root;
+
+    let root = nodes.insert(ArenaNode {
+        draw_fn,
+        listeners,
+        rect: LogicalRect::zeroed(),
+        state,
+        children: Vec::new(),
+    });
+
+    queue.push_back((root, children));
+
+    while let Some((parent_id, children)) = queue.pop_front() {
+        for (measure, child) in children {
+            let Node {
+                draw_fn,
+                listeners,
+                state,
+                children,
+            } = child;
+
+            let child_id = nodes.insert(ArenaNode {
+                draw_fn,
+                listeners,
+                rect: LogicalRect::zeroed(),
+                state,
+                children: Vec::new(),
+            });
+
+            nodes[parent_id].children.push((measure, child_id));
+            queue.push_back((child_id, children));
         }
     }
+
+    root
 }
