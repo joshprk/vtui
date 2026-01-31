@@ -6,7 +6,7 @@ pub mod events;
 
 pub mod prelude {
     pub use crate::{
-        component::{Component, Node},
+        component::{Component, Props, Node},
         input::{KeyCode, MouseButton},
         layout::{LogicalRect, Measure},
     };
@@ -22,6 +22,7 @@ pub(crate) mod input;
 pub(crate) mod layout;
 pub(crate) mod listeners;
 pub(crate) mod runtime;
+pub(crate) mod state;
 pub(crate) mod transport;
 
 mod launch;

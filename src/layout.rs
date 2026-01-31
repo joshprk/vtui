@@ -1,5 +1,6 @@
 use ratatui::layout::Rect;
 
+/// A rectangular area in the logical space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LogicalRect {
     pub x: i32,
@@ -104,6 +105,7 @@ impl LogicalRect {
     }
 }
 
+/// A layout quantity which describes what space a child node will be given relative to its parent.
 #[derive(Debug, Clone, Copy)]
 pub enum Measure {
     Exact(i32),

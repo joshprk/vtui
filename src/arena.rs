@@ -9,6 +9,7 @@ use crate::{
     context::EventContext,
     layout::{LogicalRect, Measure},
     listeners::Listeners,
+    state::StateStore,
     transport::Event,
 };
 
@@ -58,6 +59,8 @@ struct ArenaNode {
     draw_fn: Option<BoxedRenderer>,
     listeners: Listeners,
     rect: LogicalRect,
+    #[allow(dead_code)]
+    state: StateStore,
     children: Vec<(Measure, NodeId)>,
 }
 
@@ -92,6 +95,7 @@ fn populate_arena(nodes: &mut SlotMap<NodeId, ArenaNode>, root: Node) -> NodeId 
     let Node {
         draw_fn,
         listeners,
+        state,
         children,
     } = root;
 
@@ -99,6 +103,7 @@ fn populate_arena(nodes: &mut SlotMap<NodeId, ArenaNode>, root: Node) -> NodeId 
         draw_fn,
         listeners,
         rect: LogicalRect::zeroed(),
+        state,
         children: Vec::new(),
     });
 
@@ -109,6 +114,7 @@ fn populate_arena(nodes: &mut SlotMap<NodeId, ArenaNode>, root: Node) -> NodeId 
             let Node {
                 draw_fn,
                 listeners,
+                state,
                 children,
             } = child;
 
@@ -116,6 +122,7 @@ fn populate_arena(nodes: &mut SlotMap<NodeId, ArenaNode>, root: Node) -> NodeId 
                 draw_fn,
                 listeners,
                 rect: LogicalRect::zeroed(),
+                state,
                 children: Vec::new(),
             });
 
