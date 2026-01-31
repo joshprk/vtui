@@ -49,5 +49,7 @@ impl LaunchBuilder {
 /// This function is allowed to panic if the event loop errors. If you want to handle panics in a
 /// controlled manner, use the [`LaunchBuilder`] manually.
 pub fn launch(app: Factory) {
-    LaunchBuilder::new().launch(app).expect("app panicked unexpectedly");
+    LaunchBuilder::new()
+        .launch(app)
+        .expect("app panicked unexpectedly");
 }

@@ -1,9 +1,15 @@
 use core::cell::RefCell;
 
-use crate::{canvas::Canvas, context::EventContext, listeners::Listeners, transport::Event};
+use crate::{
+    canvas::Canvas, context::EventContext, layout::Measure, listeners::Listeners, transport::Event,
+};
 
 pub type BoxedRenderer = Box<dyn Fn(&mut Canvas)>;
 pub type Factory<P = ()> = fn(Component, P) -> Node;
+
+pub trait Props: Clone {}
+
+impl Props for () {}
 
 #[derive(Default)]
 pub struct Component {
@@ -26,8 +32,9 @@ impl Component {
 
 #[derive(Default)]
 pub struct Node {
-    draw_fn: Option<BoxedRenderer>,
-    listeners: Listeners,
+    pub(crate) draw_fn: Option<BoxedRenderer>,
+    pub(crate) listeners: Listeners,
+    pub(crate) children: Vec<(Measure, Node)>,
 }
 
 impl From<Component> for Node {
@@ -47,13 +54,10 @@ impl Node {
         Node::from(component)
     }
 
-    pub(crate) fn listeners_mut(&mut self) -> &mut Listeners {
-        &mut self.listeners
-    }
-
-    pub(crate) fn render(&self, canvas: &mut Canvas) {
-        if let Some(renderer) = &self.draw_fn {
-            renderer(canvas);
-        }
+    pub fn child<P: Props>(mut self, measure: Measure, factory: Factory<P>, props: P) -> Self {
+        let component = Component::default();
+        let node = factory(component, props);
+        self.children.push((measure, node));
+        self
     }
 }
