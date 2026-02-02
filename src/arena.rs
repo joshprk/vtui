@@ -11,6 +11,7 @@ use crate::{
 
 new_key_type! { struct NodeId; }
 
+/// Stores UI nodes in memory and dispatches requests to them.
 pub struct Arena {
     root: NodeId,
     nodes: SlotMap<NodeId, ArenaNode>,
