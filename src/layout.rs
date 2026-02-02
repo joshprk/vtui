@@ -105,16 +105,34 @@ impl LogicalRect {
     }
 }
 
-/// A layout quantity which describes what space a child node will be given relative to its parent.
+/// A layout quantity describing how much space a node occupies along its parent's primary axis.
 #[derive(Debug, Clone, Copy)]
 pub enum Measure {
+    /// Occupies an exact number of cells.
     Exact(i32),
-    Percentage(f64),
+
+    /// Occupies a fraction of the viewport size on the primary axis.
+    ///
+    /// A viewport unit is defined as the space allocated to the parent along its primary axis.
+    Viewport(f64),
 }
 
+impl Default for Measure {
+    fn default() -> Self {
+        Measure::Viewport(1.0)
+    }
+}
+
+/// The primary layout axis of a node.
+///
+/// A node's children are arranged sequentially along this axis, with each child consuming space
+/// according to its [`Measure`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Flow {
+    /// Children are laid out from top to bottom.
     #[default]
     Vertical,
+
+    /// Children are laid out from left to right.
     Horizontal,
 }
