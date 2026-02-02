@@ -4,6 +4,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::layout::LogicalRect;
 
+/// A drawing surface scoped to a rectangular region of the terminal buffer.
 pub struct Canvas<'a> {
     buf: &'a mut Buffer,
     rect: LogicalRect,
@@ -12,6 +13,7 @@ pub struct Canvas<'a> {
 }
 
 impl<'a> Canvas<'a> {
+    /// Creates a new canvas with the given region.
     pub fn new(rect: LogicalRect, buf: &'a mut Buffer) -> Self {
         Self {
             rect,
@@ -23,23 +25,30 @@ impl<'a> Canvas<'a> {
 }
 
 impl Canvas<'_> {
+    /// Returns the underlying buffer.
     pub fn buffer_mut(&mut self) -> &mut Buffer {
         self.buf
     }
 
+    /// Returns the underlying rectangular region.
     pub fn rect(&self) -> LogicalRect {
         self.rect
     }
 
+    /// Returns a [`LogicalRect`] with the same width and height, but with an origin of `(0, 0)`.
     pub fn area(&self) -> LogicalRect {
         LogicalRect::new(0, 0, self.rect.width, self.rect.height)
     }
 
-    pub fn set_offset(&mut self, offset_x: i32, offset_y: i32) {
+    /// Sets the offset of this canvas.
+    pub(crate) fn set_offset(&mut self, offset_x: i32, offset_y: i32) {
         self.offset_x = offset_x;
         self.offset_y = offset_y;
     }
 
+    /// Draws text content at a given position.
+    ///
+    /// This function is panic-free and text is automatically clipped.
     pub fn text<T, S>(&mut self, x: i32, y: i32, text: T, style: S)
     where
         T: AsRef<str>,
@@ -48,10 +57,14 @@ impl Canvas<'_> {
         self.set_stringn(x, y, text, usize::MAX, style);
     }
 
+    /// Draws a `ratatui` widget at the given region.
+    ///
+    /// This function is panic-free and text is automatically clipped.
     pub fn widget(&mut self, rect: impl Into<LogicalRect>, widget: impl Widget) {
         self.render_widget(rect.into(), widget);
     }
 
+    /// An internal helper which draws text content at a given position.
     fn set_stringn<T, S>(&mut self, x: i32, y: i32, text: T, max_width: usize, style: S)
     where
         T: AsRef<str>,
@@ -118,6 +131,7 @@ impl Canvas<'_> {
         }
     }
 
+    /// An internal helper that draws a `ratatui` widget at a given region.
     fn render_widget(&mut self, rect: LogicalRect, widget: impl Widget) {
         let rect = rect.with_offset(self.offset_x - self.rect.x, self.offset_y - self.rect.y);
 
@@ -176,14 +190,17 @@ impl Canvas<'_> {
         }
     }
 
+    /// Converts a x-coordinate local to this canvas to the global buffer space.
     fn get_buf_column(&self, x: i32) -> i32 {
         self.rect.x + x - self.offset_x
     }
 
+    /// Converts a y-coordinate local to this canvas to the global buffer spcae.
     fn get_buf_row(&self, y: i32) -> i32 {
         self.rect.y + y - self.offset_y
     }
 
+    /// Determines if content should be drawn even if outside of the canvas region.
     fn clipped(&self) -> bool {
         false
     }
