@@ -21,6 +21,7 @@ impl From<Rect> for LogicalRect {
 }
 
 impl LogicalRect {
+    /// Creates a new rectangle with the given space.
     pub fn new(x: i32, y: i32, width: i32, height: i32) -> Self {
         Self {
             x,
@@ -30,6 +31,7 @@ impl LogicalRect {
         }
     }
 
+    /// Returns a rectangle with zeroed-out values.
     pub fn zeroed() -> Self {
         LogicalRect {
             x: 0,
@@ -39,6 +41,7 @@ impl LogicalRect {
         }
     }
 
+    /// Returns the intersection rectangle of this rectangle and another.
     pub fn intersection(self, other: Self) -> Self {
         if !self.intersects(other) {
             return Self {
@@ -71,6 +74,7 @@ impl LogicalRect {
         }
     }
 
+    /// Determines if this rectangle intersects another.
     pub fn intersects(self, other: Self) -> bool {
         self.y < other.y + other.height
             && self.y + self.height > other.y
@@ -78,28 +82,34 @@ impl LogicalRect {
             && self.x + self.width > other.x
     }
 
+    /// Returns the same [`LogicalRect`] with an offset.
     pub fn with_offset(mut self, offset_x: i32, offset_y: i32) -> Self {
         self.x -= offset_x;
         self.y -= offset_y;
         self
     }
 
+    /// The area of the rectangle.
     pub const fn area(self) -> i64 {
         (self.width as i64) * (self.height as i64)
     }
 
+    /// The x-value of the rectangle's left edge.
     pub const fn left(self) -> i32 {
         self.x
     }
 
+    /// The x-value of the rectangle's right edge.
     pub const fn right(self) -> i32 {
         self.x.saturating_add(self.width)
     }
 
+    /// The y-value of the rectangle's top edge.
     pub const fn top(self) -> i32 {
         self.y
     }
 
+    /// The y-value of the rectangle's bottom edge.
     pub const fn bottom(self) -> i32 {
         self.y.saturating_add(self.height)
     }
@@ -135,4 +145,59 @@ pub enum Flow {
 
     /// Children are laid out from left to right.
     Horizontal,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Variable {
+    start: i32,
+    size: i32,
+}
+
+/// Computes the layout of an area across one or more measures.
+///
+/// It is possible for a layout to overflow its area.
+pub fn compute_split<I>(flow: Flow, area: LogicalRect, measures: I) -> Vec<LogicalRect>
+where
+    I: IntoIterator<Item = Measure>,
+{
+    match flow {
+        Flow::Horizontal => split_measures(area.x, area.width, measures)
+            .map(|v| LogicalRect {
+                x: v.start,
+                y: area.y,
+                width: v.size,
+                height: area.height,
+            })
+            .collect(),
+        Flow::Vertical => split_measures(area.y, area.height, measures)
+            .map(|v| LogicalRect {
+                x: area.x,
+                y: v.start,
+                width: area.width,
+                height: v.size,
+            })
+            .collect(),
+    }
+}
+
+/// Computes the split of an one-dimensional line across one or more measures.
+fn split_measures<I>(start: i32, viewport: i32, measures: I) -> impl Iterator<Item = Variable>
+where
+    I: IntoIterator<Item = Measure>,
+{
+    let mut cursor = start;
+
+    measures.into_iter().map(move |measure| {
+        let size = match measure {
+            Measure::Exact(size) => size,
+            Measure::Viewport(percent) => (viewport as f64 * percent).round() as i32,
+        };
+
+        let v = Variable {
+            start: cursor,
+            size,
+        };
+        cursor += size;
+        v
+    })
 }

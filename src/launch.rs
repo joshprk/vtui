@@ -17,7 +17,7 @@ impl LaunchBuilder {
     }
 
     pub fn launch(self, app: Factory) -> Result<(), RuntimeError> {
-        let node = app(Component::default(), ());
+        let node = app(Component::new(), ());
 
         let bus = MessageBus::new();
         let mut driver = CrosstermDriver::new(io::stdout())?;

@@ -19,7 +19,6 @@ pub trait Props: Clone + 'static {}
 impl Props for () {}
 
 /// An UI element with rendering and event listening behavior.
-#[derive(Default)]
 pub struct Component {
     node: RefCell<Node>,
 }
@@ -58,10 +57,14 @@ impl Component {
         builder(&mut node);
         node
     }
+
+    pub(crate) fn new() -> Self {
+        let node = RefCell::new(Node::new());
+        Self { node }
+    }
 }
 
 /// A compiled description of an application's UI tree.
-#[derive(Default)]
 pub struct Node {
     flow: Flow,
     state: StateStore,
@@ -82,12 +85,26 @@ impl Node {
     }
 
     pub fn child<P: Props>(&mut self, measure: Measure, factory: Factory<P>, props: P) {
-        let child_fn = Box::new(move || (measure, factory(Component::default(), props.clone())));
+        let child_fn = Box::new(move || (measure, factory(Component::new(), props.clone())));
         self.children.push(child_fn)
+    }
+
+    pub(crate) fn new() -> Self {
+        Self {
+            flow: Flow::default(),
+            state: StateStore::default(),
+            draw_fn: Option::default(),
+            listeners: Listeners::default(),
+            children: Vec::default(),
+        }
     }
 
     pub(crate) fn children(&self) -> &Vec<BoxedChild> {
         &self.children
+    }
+
+    pub(crate) fn flow(&self) -> Flow {
+        self.flow
     }
 
     pub(crate) fn listeners_mut(&mut self) -> &mut Listeners {

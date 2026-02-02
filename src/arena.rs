@@ -5,7 +5,7 @@ use crate::{
     canvas::Canvas,
     component::Node,
     context::EventContext,
-    layout::{LogicalRect, Measure},
+    layout::{LogicalRect, Measure, compute_split},
     transport::Event,
 };
 
@@ -35,7 +35,10 @@ impl From<Node> for Arena {
 }
 
 impl Arena {
+    /// Draws the node tree on the given frame.
     pub fn render(&mut self, frame: &mut Frame) {
+        compute_layout(&mut self.nodes, self.root, frame.area().into());
+
         let buf = frame.buffer_mut();
 
         for &id in self.traversal.iter() {
@@ -46,6 +49,7 @@ impl Arena {
         }
     }
 
+    /// Broadcasts an event to the node tree.
     pub fn update<E: Event>(&mut self, mut ctx: EventContext<E>) {
         for &id in self.traversal.iter().rev() {
             let node = &mut self.nodes[id];
@@ -71,6 +75,7 @@ impl From<Node> for ArenaNode {
 }
 
 impl ArenaNode {
+    /// Renders the component into the frame buffer.
     fn render(&self, canvas: &mut Canvas) {
         if let Some(renderer) = &self.node.renderer() {
             renderer(canvas);
@@ -78,6 +83,26 @@ impl ArenaNode {
     }
 }
 
+/// Assigns areas to nodes given their layout.
+fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport: LogicalRect) {
+    let mut stack = vec![(root, viewport)];
+
+    while let Some((id, rect)) = stack.pop() {
+        nodes[id].rect = rect;
+
+        let flow = nodes[id].node.flow();
+        let children = nodes[id].children.iter().collect::<Vec<_>>();
+        let measures = children.iter().map(|(m, _)| *m);
+
+        let splits = compute_split(flow, rect, measures);
+
+        for ((_, child_id), child_rect) in children.into_iter().zip(splits).rev() {
+            stack.push((*child_id, child_rect));
+        }
+    }
+}
+
+/// Computes a pre-order DFS traversal order for a node tree.
 fn compute_traversal(nodes: &SlotMap<NodeId, ArenaNode>, root: NodeId) -> Vec<NodeId> {
     let mut order = Vec::with_capacity(nodes.len());
     let mut stack = Vec::new();
@@ -95,6 +120,7 @@ fn compute_traversal(nodes: &SlotMap<NodeId, ArenaNode>, root: NodeId) -> Vec<No
     order
 }
 
+/// Destroys and recreates the children of the given [`Node`].
 fn remount_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
     remove_subtree(nodes, root_id);
 
@@ -112,6 +138,7 @@ fn remount_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
     }
 }
 
+/// Removes a node subtree recursively, leaving only its parent.
 fn remove_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
     let old = core::mem::take(&mut nodes[root_id].children);
 
