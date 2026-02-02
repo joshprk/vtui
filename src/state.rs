@@ -1,4 +1,4 @@
-use std::cell::{Ref, RefMut};
+use core::cell::{Ref, RefMut};
 
 use generational_box::{
     GenerationalBox, GenerationalRef, GenerationalRefMut, Owner, UnsyncStorage,
