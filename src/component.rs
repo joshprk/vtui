@@ -80,15 +80,18 @@ impl From<Component> for Node {
 }
 
 impl Node {
+    /// Sets the [`Flow`] of this node.
     pub fn set_flow(&mut self, flow: Flow) {
         self.flow = flow;
     }
 
+    /// Adds a child to this node.
     pub fn child<P: Props>(&mut self, measure: Measure, factory: Factory<P>, props: P) {
         let child_fn = Box::new(move || (measure, factory(Component::new(), props.clone())));
         self.children.push(child_fn)
     }
 
+    /// Creates a new node.
     pub(crate) fn new() -> Self {
         Self {
             flow: Flow::default(),
@@ -99,18 +102,22 @@ impl Node {
         }
     }
 
+    /// Returns functions for mounting this node's children.
     pub(crate) fn children(&self) -> &Vec<BoxedChild> {
         &self.children
     }
 
+    /// Returns the flow of this node.
     pub(crate) fn flow(&self) -> Flow {
         self.flow
     }
 
+    /// Returns the listeners of this node.
     pub(crate) fn listeners_mut(&mut self) -> &mut Listeners {
         &mut self.listeners
     }
 
+    /// Returns the draw function of this node.
     pub(crate) fn renderer(&self) -> Option<&BoxedRenderer> {
         self.draw_fn.as_ref()
     }
