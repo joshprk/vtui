@@ -1,15 +1,11 @@
-use alloc::collections::VecDeque;
-
 use ratatui::Frame;
 use slotmap::{SlotMap, new_key_type};
 
 use crate::{
     canvas::Canvas,
-    component::{BoxedRenderer, Node},
+    component::Node,
     context::EventContext,
     layout::{LogicalRect, Measure},
-    listeners::Listeners,
-    state::StateStore,
     transport::Event,
 };
 
@@ -24,7 +20,10 @@ pub struct Arena {
 impl From<Node> for Arena {
     fn from(root: Node) -> Self {
         let mut nodes = SlotMap::default();
-        let root = populate_arena(&mut nodes, root);
+        let root = nodes.insert(root.into());
+
+        remount_subtree(&mut nodes, root);
+
         let traversal = compute_traversal(&nodes, root);
 
         Self {
@@ -50,23 +49,30 @@ impl Arena {
     pub fn update<E: Event>(&mut self, mut ctx: EventContext<E>) {
         for &id in self.traversal.iter().rev() {
             let node = &mut self.nodes[id];
-            node.listeners.dispatch(&mut ctx);
+            node.node.listeners_mut().dispatch(&mut ctx);
         }
     }
 }
 
 struct ArenaNode {
-    draw_fn: Option<BoxedRenderer>,
-    listeners: Listeners,
+    node: Node,
     rect: LogicalRect,
-    #[allow(dead_code)]
-    state: StateStore,
     children: Vec<(Measure, NodeId)>,
+}
+
+impl From<Node> for ArenaNode {
+    fn from(node: Node) -> Self {
+        Self {
+            node,
+            rect: LogicalRect::zeroed(),
+            children: Vec::new(),
+        }
+    }
 }
 
 impl ArenaNode {
     fn render(&self, canvas: &mut Canvas) {
-        if let Some(renderer) = &self.draw_fn {
+        if let Some(renderer) = &self.node.renderer() {
             renderer(canvas);
         }
     }
@@ -89,47 +95,28 @@ fn compute_traversal(nodes: &SlotMap<NodeId, ArenaNode>, root: NodeId) -> Vec<No
     order
 }
 
-fn populate_arena(nodes: &mut SlotMap<NodeId, ArenaNode>, root: Node) -> NodeId {
-    let mut queue = VecDeque::new();
+fn remount_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
+    remove_subtree(nodes, root_id);
 
-    let Node {
-        draw_fn,
-        listeners,
-        state,
-        children,
-    } = root;
+    let children = nodes[root_id]
+        .node
+        .children()
+        .iter()
+        .map(|child_fn| child_fn())
+        .collect::<Vec<_>>();
 
-    let root = nodes.insert(ArenaNode {
-        draw_fn,
-        listeners,
-        rect: LogicalRect::zeroed(),
-        state,
-        children: Vec::new(),
-    });
-
-    queue.push_back((root, children));
-
-    while let Some((parent_id, children)) = queue.pop_front() {
-        for (measure, child) in children {
-            let Node {
-                draw_fn,
-                listeners,
-                state,
-                children,
-            } = child;
-
-            let child_id = nodes.insert(ArenaNode {
-                draw_fn,
-                listeners,
-                rect: LogicalRect::zeroed(),
-                state,
-                children: Vec::new(),
-            });
-
-            nodes[parent_id].children.push((measure, child_id));
-            queue.push_back((child_id, children));
-        }
+    for (measure, child) in children {
+        let child_id = nodes.insert(child.into());
+        nodes[root_id].children.push((measure, child_id));
+        remount_subtree(nodes, child_id);
     }
+}
 
-    root
+fn remove_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
+    let old = core::mem::take(&mut nodes[root_id].children);
+
+    for (_, id) in old {
+        remove_subtree(nodes, id);
+        nodes.remove(id);
+    }
 }

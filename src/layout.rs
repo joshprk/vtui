@@ -111,3 +111,10 @@ pub enum Measure {
     Exact(i32),
     Percentage(f64),
 }
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Flow {
+    #[default]
+    Vertical,
+    Horizontal,
+}

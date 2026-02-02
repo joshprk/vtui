@@ -3,12 +3,13 @@ use core::cell::RefCell;
 use crate::{
     canvas::Canvas,
     context::EventContext,
-    layout::Measure,
+    layout::{Flow, Measure},
     listeners::Listeners,
     state::{State, StateStore},
     transport::Event,
 };
 
+pub type BoxedChild = Box<dyn Fn() -> (Measure, Node)>;
 pub type BoxedRenderer = Box<dyn Fn(&mut Canvas)>;
 pub type Factory<P = ()> = fn(Component, P) -> Node;
 
@@ -47,15 +48,26 @@ impl Component {
     pub fn state<T: 'static>(&self, value: T) -> State<T> {
         self.node.borrow_mut().state.insert(value)
     }
+
+    /// Builds the component into a [`Node`].
+    pub fn compose<F>(self, builder: F) -> Node
+    where
+        F: FnOnce(&mut Node),
+    {
+        let mut node = Node::from(self);
+        builder(&mut node);
+        node
+    }
 }
 
 /// A compiled description of an application's UI tree.
 #[derive(Default)]
 pub struct Node {
-    pub(crate) draw_fn: Option<BoxedRenderer>,
-    pub(crate) listeners: Listeners,
-    pub(crate) state: StateStore,
-    pub(crate) children: Vec<(Measure, Node)>,
+    flow: Flow,
+    state: StateStore,
+    draw_fn: Option<BoxedRenderer>,
+    listeners: Listeners,
+    children: Vec<BoxedChild>,
 }
 
 impl From<Component> for Node {
@@ -64,23 +76,25 @@ impl From<Component> for Node {
     }
 }
 
-impl From<Factory> for Node {
-    fn from(factory: Factory) -> Self {
-        factory(Component::default(), ())
-    }
-}
-
 impl Node {
-    /// Creates a new node.
-    pub fn new(component: Component) -> Self {
-        Node::from(component)
+    pub fn set_flow(&mut self, flow: Flow) {
+        self.flow = flow;
     }
 
-    /// Adds a static child to this node.
-    pub fn child<P: Props>(mut self, measure: Measure, factory: Factory<P>, props: P) -> Self {
-        let component = Component::default();
-        let node = factory(component, props);
-        self.children.push((measure, node));
-        self
+    pub fn child<P: Props>(&mut self, measure: Measure, factory: Factory<P>, props: P) {
+        let child_fn = Box::new(move || (measure, factory(Component::default(), props.clone())));
+        self.children.push(child_fn)
+    }
+
+    pub(crate) fn children(&self) -> &Vec<BoxedChild> {
+        &self.children
+    }
+
+    pub(crate) fn listeners_mut(&mut self) -> &mut Listeners {
+        &mut self.listeners
+    }
+
+    pub(crate) fn renderer(&self) -> Option<&BoxedRenderer> {
+        self.draw_fn.as_ref()
     }
 }

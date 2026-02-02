@@ -1,7 +1,7 @@
 use std::io;
 
 use crate::{
-    component::{Factory, Node},
+    component::{Component, Factory},
     drivers::{CrosstermDriver, Driver},
     errors::RuntimeError,
     runtime::Runtime,
@@ -17,7 +17,7 @@ impl LaunchBuilder {
     }
 
     pub fn launch(self, app: Factory) -> Result<(), RuntimeError> {
-        let node = Node::from(app);
+        let node = app(Component::default(), ());
 
         let bus = MessageBus::new();
         let mut driver = CrosstermDriver::new(io::stdout())?;
