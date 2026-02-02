@@ -1,8 +1,8 @@
 use ratatui::style::Style;
 use vtui::{events::*, prelude::*};
 
-#[allow(non_snake_case)]
-fn App(c: Component, p: ()) -> Node {
+#[component]
+fn App(c: Component) -> Node {
     c.listen::<KeyPress>(|event| {
         if event.key == KeyCode::Char('q') {
             event.request_shutdown();
@@ -16,7 +16,8 @@ fn App(c: Component, p: ()) -> Node {
     })
 }
 
-fn Test(c: Component, p: ()) -> Node {
+#[component]
+fn Test(c: Component) -> Node {
     let mut clicks = c.state(0);
 
     c.draw(move |canvas| {

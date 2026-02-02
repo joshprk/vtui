@@ -1,3 +1,7 @@
+[workspace]
+members = ["macros"]
+resolver = "3"
+
 [package]
 name = "vtui"
 version = "0.2.1"
@@ -21,3 +25,4 @@ slotmap = "1.1.1"
 thiserror = "2.0.18"
 unicode-segmentation = "1.12.0"
 unicode-width = "0.2.2"
+vtui-macros = { version = "0.2.1", path = "macros" }

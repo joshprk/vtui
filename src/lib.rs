@@ -6,10 +6,11 @@ pub mod events;
 
 pub mod prelude {
     pub use crate::{
-        component::{Component, Node, Props},
+        component::{Component, Factory, Node, Props},
         input::{KeyCode, MouseButton},
         layout::{Flow, LogicalRect, Measure},
     };
+    pub use vtui_macros::component;
 }
 
 pub(crate) mod arena;
