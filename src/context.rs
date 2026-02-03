@@ -1,10 +1,31 @@
 use core::ops::Deref;
 
-use crate::transport::{Event, MouseEvent};
+use crate::transport::{Event, MessageSender, MouseEvent};
 
-#[derive(Default)]
 pub struct Context {
-    pub shutdown_requested: bool,
+    handle: MessageSender,
+    shutdown_requested: bool,
+}
+
+impl Context {
+    pub fn new(handle: MessageSender) -> Self {
+        Self {
+            handle,
+            shutdown_requested: false,
+        }
+    }
+
+    pub fn handle(&self) -> &MessageSender {
+        &self.handle
+    }
+
+    pub fn shutdown_requested(&self) -> bool {
+        self.shutdown_requested
+    }
+
+    pub fn request_shutdown(&mut self) {
+        self.shutdown_requested = true;
+    }
 }
 
 pub struct EventContext<'d, E: Event> {
@@ -22,6 +43,7 @@ impl<E: Event> Deref for EventContext<'_, E> {
 }
 
 impl<'d, E: Event> EventContext<'d, E> {
+    /// Creates a new event context.
     pub fn new(event: &'d E, context: &'d mut Context, is_target: bool) -> Self {
         Self {
             event,
@@ -36,7 +58,7 @@ impl<E: Event> EventContext<'_, E> {
     ///
     /// The runtime loop may defer or delay shutdown requests with discretion.
     pub fn request_shutdown(&mut self) {
-        self.context.shutdown_requested = true;
+        self.context.request_shutdown()
     }
 }
 

@@ -75,13 +75,14 @@ impl<'d> Dispatch<'d> {
 }
 
 pub struct MessageBus {
-    tx: flume::Sender<Message>,
+    tx: MessageSender,
     rx: flume::Receiver<Message>,
 }
 
 impl Default for MessageBus {
     fn default() -> Self {
         let (tx, rx) = flume::bounded(Self::DEFAULT_CAPACITY);
+        let tx = MessageSender::from(tx);
         Self { tx, rx }
     }
 }
@@ -93,8 +94,8 @@ impl MessageBus {
         Self::default()
     }
 
-    pub fn sender(&self) -> MessageSender {
-        MessageSender::from(self)
+    pub fn handle(&self) -> &MessageSender {
+        &self.tx
     }
 
     pub fn recv(&self) -> Message {
@@ -107,11 +108,9 @@ pub struct MessageSender {
     tx: flume::Sender<Message>,
 }
 
-impl From<&MessageBus> for MessageSender {
-    fn from(value: &MessageBus) -> Self {
-        Self {
-            tx: value.tx.clone(),
-        }
+impl From<flume::Sender<Message>> for MessageSender {
+    fn from(tx: flume::Sender<Message>) -> Self {
+        Self { tx }
     }
 }
 

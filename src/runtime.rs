@@ -18,7 +18,9 @@ pub struct Runtime {
 impl Runtime {
     pub fn new(node: Node, bus: MessageBus) -> Self {
         let arena = Arena::from(node);
-        let context = Context::default();
+        let handle = bus.handle();
+        let context = Context::new(handle.clone());
+
         Self {
             arena,
             context,
@@ -44,6 +46,6 @@ impl Runtime {
     }
 
     pub fn should_exit(&self) -> bool {
-        self.context.shutdown_requested
+        self.context.shutdown_requested()
     }
 }

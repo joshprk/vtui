@@ -20,10 +20,11 @@ impl LaunchBuilder {
         let node = app(Component::new(), ());
 
         let bus = MessageBus::new();
+        let handle = bus.handle();
         let mut driver = CrosstermDriver::new(io::stdout())?;
 
         driver.setup()?;
-        driver.spawn_event_handler(bus.sender());
+        driver.spawn_event_handler(handle.clone());
 
         let mut runtime = Runtime::new(node, bus);
 
