@@ -49,7 +49,7 @@ fn App(c: Component) -> Node {
         }
     });
 
-    vtui! {}
+    c.compose(|_| {})
 }
 
 fn main() {
