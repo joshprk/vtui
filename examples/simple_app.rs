@@ -26,7 +26,7 @@ fn Test(c: Component) -> Node {
     });
 
     c.listen::<MouseDown>(move |event| {
-        if event.button == MouseButton::Left {
+        if event.is_mouse_hit() && event.button == MouseButton::Left {
             clicks.set(|n| n + 1);
         }
     });
