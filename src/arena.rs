@@ -51,10 +51,11 @@ impl Arena {
     /// Broadcasts an event to the node tree.
     pub fn update<E: Event>(&mut self, event: &E, context: &mut Context) {
         let target = event.target(self);
+        context.set_target(target);
 
         for &id in self.traversal.iter().rev() {
             let node = &mut self.nodes[id];
-            let mut ctx = EventContext::new(event, context, target == Some(id));
+            let mut ctx = EventContext::new(event, context, id);
             node.node.listeners_mut().dispatch(&mut ctx);
         }
     }
