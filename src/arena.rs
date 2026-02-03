@@ -4,12 +4,10 @@ use slotmap::{SlotMap, new_key_type};
 use crate::{
     canvas::Canvas,
     component::Node,
-    context::EventContext,
+    context::{Context, EventContext},
     layout::{LogicalRect, Measure, compute_split},
     transport::Event,
 };
-
-new_key_type! { struct NodeId; }
 
 /// Stores UI nodes in memory and dispatches requests to them.
 pub struct Arena {
@@ -51,15 +49,33 @@ impl Arena {
     }
 
     /// Broadcasts an event to the node tree.
-    pub fn update<E: Event>(&mut self, mut ctx: EventContext<E>) {
+    pub fn update<E: Event>(&mut self, event: &E, context: &mut Context) {
         for &id in self.traversal.iter().rev() {
+            let mut ctx = EventContext::new(event, context, id);
             let node = &mut self.nodes[id];
             node.node.listeners_mut().dispatch(&mut ctx);
         }
     }
+
+    /// Returns a reference to a node.
+    pub fn get(&self, id: NodeId) -> Option<&ArenaNode> {
+        self.nodes.get(id)
+    }
+
+    /// Returns an iterator in the forward traversal order.
+    pub fn traverse(&self) -> impl DoubleEndedIterator<Item = (NodeId, &ArenaNode)> {
+        self.traversal
+            .iter()
+            .map(|&id| {
+                let node = self.nodes.get(id).expect("Traversal order has invalid NodeId");
+                (id, node)
+            })
+    }
 }
 
-struct ArenaNode {
+new_key_type! { pub struct NodeId; }
+
+pub struct ArenaNode {
     node: Node,
     rect: LogicalRect,
     children: Vec<(Measure, NodeId)>,
@@ -76,6 +92,10 @@ impl From<Node> for ArenaNode {
 }
 
 impl ArenaNode {
+    pub fn area(&self) -> LogicalRect {
+        self.rect
+    }
+
     /// Renders the component into the frame buffer.
     fn render(&self, canvas: &mut Canvas) {
         if let Some(renderer) = &self.node.renderer() {

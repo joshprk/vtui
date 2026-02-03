@@ -1,6 +1,9 @@
 use core::ops::Deref;
 
-use crate::transport::Event;
+use crate::{
+    arena::NodeId,
+    transport::{Event, MouseEvent},
+};
 
 #[derive(Default)]
 pub struct Context {
@@ -8,21 +11,26 @@ pub struct Context {
 }
 
 pub struct EventContext<'d, E: Event> {
-    event: Box<E>,
+    event: &'d E,
     context: &'d mut Context,
+    current_node: NodeId,
 }
 
 impl<E: Event> Deref for EventContext<'_, E> {
     type Target = E;
 
     fn deref(&self) -> &Self::Target {
-        self.event.as_ref()
+        self.event
     }
 }
 
 impl<'d, E: Event> EventContext<'d, E> {
-    pub fn new(event: Box<E>, context: &'d mut Context) -> Self {
-        Self { event, context }
+    pub fn new(event: &'d E, context: &'d mut Context, current_node: NodeId) -> Self {
+        Self {
+            event,
+            context,
+            current_node,
+        }
     }
 }
 
@@ -31,3 +39,5 @@ impl<E: Event> EventContext<'_, E> {
         self.context.shutdown_requested = true;
     }
 }
+
+impl<E: MouseEvent> EventContext<'_, E> {}

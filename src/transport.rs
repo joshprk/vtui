@@ -1,18 +1,35 @@
 use core::any::Any;
 
 use crate::{
-    arena::Arena,
-    context::{Context, EventContext},
-    errors::SendError,
+    arena::{Arena, NodeId},
+    context::Context,
+    errors::SendError, layout::LogicalRect,
 };
 
-pub trait Event: Any + Send {}
+pub trait Event: Any + Send {
+    fn target(&self, _arena: &Arena) -> Option<NodeId> {
+        None
+    }
+}
 
 pub trait MouseEvent: Event {
     fn coords(&self) -> (u16, u16);
 }
 
-impl<E: MouseEvent> Event for E {}
+impl<E: MouseEvent> Event for E {
+    fn target(&self, arena: &Arena) -> Option<NodeId> {
+        let (x, y) = self.coords();
+        let cursor = LogicalRect::new(x as i32, y as i32, 1, 1);
+
+        for (id, node) in arena.traverse().rev() {
+            if node.area().intersects(cursor) {
+                return Some(id);
+            }
+        }
+
+        None
+    }
+}
 
 pub struct Message {
     event: Box<dyn Event>,
@@ -41,8 +58,7 @@ impl Message {
         let event = (msg.event as Box<dyn Any>)
             .downcast::<E>()
             .expect("TypeId mismatch");
-        let ctx = EventContext::new(event, dispatch.context);
-        dispatch.arena.update(ctx);
+        dispatch.arena.update(event.as_ref(), dispatch.context);
     }
 }
 
