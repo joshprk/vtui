@@ -19,13 +19,8 @@ jobs:
         run: |
           cargo metadata --no-deps
 
-      - name: Publish vtui-core
-        run: cargo publish --manifest-path crates/vtui-core/Cargo.toml
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
       - name: Publish vtui-macros
-        run: cargo publish --manifest-path crates/vtui-macros/Cargo.toml
+        run: cargo publish --manifest-path macros/Cargo.toml
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
