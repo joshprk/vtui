@@ -3,7 +3,8 @@ use core::any::Any;
 use crate::{
     arena::{Arena, NodeId},
     context::Context,
-    errors::SendError, layout::LogicalRect,
+    errors::SendError,
+    layout::LogicalRect,
 };
 
 pub trait Event: Any + Send {
