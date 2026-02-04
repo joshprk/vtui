@@ -6,6 +6,7 @@ use crate::{
     transport::Message,
 };
 
+/// A modifier key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModifierKeyCode {
     Shift,
@@ -18,12 +19,14 @@ pub enum ModifierKeyCode {
     IsoLevel5Shift,
 }
 
+/// Physical position of a modifier key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModifierKeyDirection {
     Left,
     Right,
 }
 
+/// A mouse button.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MouseButton {
     Left,
@@ -31,6 +34,7 @@ pub enum MouseButton {
     Middle,
 }
 
+/// Direction of scroll wheel movement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MouseScrollDirection {
     Up,
@@ -39,6 +43,7 @@ pub enum MouseScrollDirection {
     Right,
 }
 
+/// A media control key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MediaKeyCode {
     Play,
@@ -56,6 +61,7 @@ pub enum MediaKeyCode {
     MuteVolume,
 }
 
+/// A keyboard key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeyCode {
     Backspace,

@@ -60,7 +60,10 @@ pub mod events;
 pub mod prelude {
     pub use crate::{
         component::{Component, Factory, Node, Props},
-        input::{KeyCode, MouseButton},
+        input::{
+            KeyCode, MediaKeyCode, ModifierKeyCode, ModifierKeyDirection, MouseButton,
+            MouseScrollDirection,
+        },
         layout::{Flow, LogicalRect, Measure},
         state::State,
     };
