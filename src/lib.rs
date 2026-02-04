@@ -1,6 +1,9 @@
 extern crate alloc;
 
-pub use crate::launch::{LaunchBuilder, launch};
+pub use crate::{
+    context::EventContext,
+    launch::{LaunchBuilder, launch},
+};
 
 pub mod events;
 
