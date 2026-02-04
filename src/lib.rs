@@ -53,8 +53,10 @@ pub use crate::{
     launch::{LaunchBuilder, launch},
 };
 
+/// Event types emitted by the framework.
 pub mod events;
 
+/// Common imports for building components.
 pub mod prelude {
     pub use crate::{
         component::{Component, Factory, Node, Props},
