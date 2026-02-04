@@ -11,7 +11,7 @@ pub struct StateStore {
 
 impl StateStore {
     pub fn insert<T: 'static>(&self, value: T) -> State<T> {
-        State::from(self.inner.insert(value))
+        State::new(self.inner.insert(value))
     }
 }
 
@@ -31,12 +31,6 @@ impl<T> Clone for State<T> {
 }
 
 impl<T> Copy for State<T> {}
-
-impl<T> From<GenerationalBox<T>> for State<T> {
-    fn from(inner: GenerationalBox<T>) -> Self {
-        Self { inner }
-    }
-}
 
 impl<T> State<T> {
     /// Returns a reference to the inner value.
@@ -62,5 +56,9 @@ impl<T> State<T> {
     {
         let state = write(&self.inner.read());
         *self.inner.write() = state;
+    }
+
+    pub(crate) fn new(inner: GenerationalBox<T>) -> Self {
+        Self { inner }
     }
 }

@@ -9,6 +9,7 @@ pub mod prelude {
         component::{Component, Factory, Node, Props},
         input::{KeyCode, MouseButton},
         layout::{Flow, LogicalRect, Measure},
+        state::State,
     };
     pub use vtui_macros::component;
 }
