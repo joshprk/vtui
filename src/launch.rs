@@ -8,14 +8,17 @@ use crate::{
     transport::MessageBus,
 };
 
+/// Builder for configuring and launching an application.
 #[derive(Default)]
 pub struct LaunchBuilder {}
 
 impl LaunchBuilder {
+    /// Creates a new builder with default settings.
     pub fn new() -> Self {
         LaunchBuilder::default()
     }
 
+    /// Launches the application with the given root component.
     pub fn launch(self, app: Factory) -> Result<(), RuntimeError> {
         let node = app(Component::new(), ());
 
@@ -47,8 +50,7 @@ impl LaunchBuilder {
 ///
 /// # Panics
 ///
-/// This function is allowed to panic if the event loop errors. If you want to handle panics in a
-/// controlled manner, use the [`LaunchBuilder`] manually.
+/// Panics if the runtime encounters an error. Use [`LaunchBuilder`] for controlled error handling.
 pub fn launch(app: Factory) {
     LaunchBuilder::new()
         .launch(app)
