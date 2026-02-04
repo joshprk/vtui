@@ -107,6 +107,7 @@ impl Node {
         }
     }
 
+    /// Returns this node's attributes.
     pub(crate) fn attributes(&self) -> NodeAttributes {
         self.attributes
     }
@@ -136,6 +137,7 @@ impl Node {
 #[derive(Clone, Copy)]
 pub struct NodeAttributes {
     pub clipped: bool,
+    pub focusable: bool,
     pub flow: Flow,
 }
 
@@ -143,6 +145,7 @@ impl Default for NodeAttributes {
     fn default() -> Self {
         Self {
             clipped: true,
+            focusable: false,
             flow: Flow::default(),
         }
     }

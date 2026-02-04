@@ -43,6 +43,7 @@ impl Runtime {
         let msg = self.bus.recv();
         let dispatch = Dispatch::new(&mut self.arena, &mut self.context);
         msg.dispatch(dispatch);
+        self.context.commit();
     }
 
     pub fn should_exit(&self) -> bool {
