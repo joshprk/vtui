@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use ratatui::prelude::Backend;
 
 use crate::{
@@ -6,7 +8,7 @@ use crate::{
     context::Context,
     drivers::Driver,
     errors::RuntimeError,
-    transport::{Dispatch, MessageBus},
+    transport::{Dispatch, Message, MessageBus},
 };
 
 pub struct Runtime {
@@ -40,13 +42,23 @@ impl Runtime {
     }
 
     pub fn update(&mut self) {
+        let deadline = Instant::now() + Duration::from_millis(16);
         let msg = self.bus.recv();
-        let dispatch = Dispatch::new(&mut self.arena, &mut self.context);
-        msg.dispatch(dispatch);
-        self.context.commit();
+
+        self.dispatch(msg);
+
+        while let Some(msg) = self.bus.recv_timeout(deadline - Instant::now()) {
+            self.dispatch(msg);
+        }
     }
 
     pub fn should_exit(&self) -> bool {
         self.context.shutdown_requested()
+    }
+
+    fn dispatch(&mut self, msg: Message) {
+        let dispatch = Dispatch::new(&mut self.arena, &mut self.context);
+        msg.dispatch(dispatch);
+        self.context.commit();
     }
 }

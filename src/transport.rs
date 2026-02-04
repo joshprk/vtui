@@ -1,4 +1,4 @@
-use core::any::Any;
+use core::{any::Any, time::Duration};
 
 use crate::{
     arena::{Arena, NodeId},
@@ -100,6 +100,14 @@ impl MessageBus {
 
     pub fn recv(&self) -> Message {
         self.rx.recv().expect("bus closed unexpectedly")
+    }
+
+    pub fn recv_timeout(&self, timeout: Duration) -> Option<Message> {
+        match self.rx.recv_timeout(timeout) {
+            Ok(msg) => Some(msg),
+            Err(flume::RecvTimeoutError::Timeout) => None,
+            Err(flume::RecvTimeoutError::Disconnected) => panic!("bus closed unexpectedly"),
+        }
     }
 }
 
