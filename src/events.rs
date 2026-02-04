@@ -90,3 +90,7 @@ pub struct Resize {
 }
 
 impl Event for Resize {}
+
+pub struct FocusChanged {}
+
+impl Event for FocusChanged {}

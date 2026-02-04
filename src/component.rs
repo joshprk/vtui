@@ -85,6 +85,11 @@ impl Node {
         self.attributes.clipped = clipped;
     }
 
+    /// Determines whether this component can capture focus.
+    pub fn set_focusable(&mut self, focusable: bool) {
+        self.attributes.focusable = focusable;
+    }
+
     /// Sets the [`Flow`] of this node.
     pub fn set_flow(&mut self, flow: Flow) {
         self.attributes.flow = flow;
