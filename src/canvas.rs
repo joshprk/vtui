@@ -2,11 +2,12 @@ use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-use crate::layout::LogicalRect;
+use crate::{arena::ArenaNode, layout::LogicalRect};
 
 /// A drawing surface scoped to a rectangular region of the terminal buffer.
 pub struct Canvas<'a> {
     buf: &'a mut Buffer,
+    clipped: bool,
     rect: LogicalRect,
     offset_x: i32,
     offset_y: i32,
@@ -14,10 +15,13 @@ pub struct Canvas<'a> {
 
 impl<'a> Canvas<'a> {
     /// Creates a new canvas with the given region.
-    pub fn new(rect: LogicalRect, buf: &'a mut Buffer) -> Self {
+    pub fn new(node: &ArenaNode, buf: &'a mut Buffer) -> Self {
+        let rect = node.area();
+        let clipped = node.attributes().clipped;
         Self {
-            rect,
             buf,
+            clipped,
+            rect,
             offset_x: 0,
             offset_y: 0,
         }
@@ -202,6 +206,6 @@ impl Canvas<'_> {
 
     /// Determines if content should be drawn even if outside of the canvas region.
     fn clipped(&self) -> bool {
-        false
+        self.clipped
     }
 }

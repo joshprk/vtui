@@ -3,7 +3,7 @@ use slotmap::{SlotMap, new_key_type};
 
 use crate::{
     canvas::Canvas,
-    component::Node,
+    component::{Node, NodeAttributes},
     context::{Context, EventContext},
     layout::{LogicalRect, Measure, compute_split},
     transport::Event,
@@ -42,7 +42,7 @@ impl Arena {
 
         for &id in self.traversal.iter() {
             let node = &mut self.nodes[id];
-            let mut canvas = Canvas::new(node.rect, buf);
+            let mut canvas = Canvas::new(node, buf);
 
             node.render(&mut canvas);
         }
@@ -98,6 +98,10 @@ impl From<Node> for ArenaNode {
 impl ArenaNode {
     pub fn area(&self) -> LogicalRect {
         self.rect
+    }
+
+    pub fn attributes(&self) -> NodeAttributes {
+        self.node.attributes()
     }
 
     /// Renders the component into the frame buffer.

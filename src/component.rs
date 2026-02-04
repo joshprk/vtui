@@ -66,7 +66,7 @@ impl Component {
 
 /// A compiled description of an application's UI tree.
 pub struct Node {
-    flow: Flow,
+    attributes: NodeAttributes,
     state: StateStore,
     draw_fn: Option<BoxedRenderer>,
     listeners: Listeners,
@@ -80,9 +80,14 @@ impl From<Component> for Node {
 }
 
 impl Node {
+    /// Determines whether this component should draw outside of its visual bounds.
+    pub fn set_clipped(&mut self, clipped: bool) {
+        self.attributes.clipped = clipped;
+    }
+
     /// Sets the [`Flow`] of this node.
     pub fn set_flow(&mut self, flow: Flow) {
-        self.flow = flow;
+        self.attributes.flow = flow;
     }
 
     /// Adds a child to this node.
@@ -94,12 +99,16 @@ impl Node {
     /// Creates a new node.
     pub(crate) fn new() -> Self {
         Self {
-            flow: Flow::default(),
+            attributes: NodeAttributes::default(),
             state: StateStore::default(),
             draw_fn: Option::default(),
             listeners: Listeners::default(),
             children: Vec::default(),
         }
+    }
+
+    pub(crate) fn attributes(&self) -> NodeAttributes {
+        self.attributes
     }
 
     /// Returns functions for mounting this node's children.
@@ -109,7 +118,7 @@ impl Node {
 
     /// Returns the flow of this node.
     pub(crate) fn flow(&self) -> Flow {
-        self.flow
+        self.attributes.flow
     }
 
     /// Returns the listeners of this node.
@@ -120,5 +129,21 @@ impl Node {
     /// Returns the draw function of this node.
     pub(crate) fn renderer(&self) -> Option<&BoxedRenderer> {
         self.draw_fn.as_ref()
+    }
+}
+
+/// Describes various properties for a [`Node`].
+#[derive(Clone, Copy)]
+pub struct NodeAttributes {
+    pub clipped: bool,
+    pub flow: Flow,
+}
+
+impl Default for NodeAttributes {
+    fn default() -> Self {
+        Self {
+            clipped: true,
+            flow: Flow::default(),
+        }
     }
 }
