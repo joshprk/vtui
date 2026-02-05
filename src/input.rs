@@ -75,6 +75,7 @@ pub enum KeyCode {
     PageUp,
     PageDown,
     Tab,
+    BackTab,
     Delete,
     Insert,
     F(u8),

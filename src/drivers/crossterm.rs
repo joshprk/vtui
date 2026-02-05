@@ -156,7 +156,7 @@ fn normalize_key_event(key_event: crossterm::event::KeyEvent) -> Option<Input> {
             crossterm::event::KeyCode::PageUp => Some(KeyCode::PageUp),
             crossterm::event::KeyCode::PageDown => Some(KeyCode::PageDown),
             crossterm::event::KeyCode::Tab => Some(KeyCode::Tab),
-            crossterm::event::KeyCode::BackTab => Some(KeyCode::Tab),
+            crossterm::event::KeyCode::BackTab => Some(KeyCode::BackTab),
             crossterm::event::KeyCode::Delete => Some(KeyCode::Delete),
             crossterm::event::KeyCode::Insert => Some(KeyCode::Insert),
             crossterm::event::KeyCode::F(n) => Some(KeyCode::F(n)),
