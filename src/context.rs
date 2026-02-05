@@ -55,14 +55,8 @@ impl Context {
         }
     }
 
-    pub fn commit(&mut self) {
-        if !self.command_buffer.is_empty() {
-            let commands = core::mem::take(&mut self.command_buffer);
-
-            for cmd in commands {
-                cmd.reduce(self);
-            }
-        }
+    pub fn drain_commands(&mut self) -> Vec<Command> {
+        core::mem::take(&mut self.command_buffer)
     }
 
     pub fn handle(&self) -> &MessageSender {
