@@ -95,6 +95,11 @@ impl Node {
         self.attributes.flow = flow;
     }
 
+    /// Sets the canvas offset of this node.
+    pub fn set_offset(&mut self, x: i32, y: i32) {
+        self.attributes.offset = (x, y);
+    }
+
     /// Adds a child to this node.
     pub fn child<P: Props>(&mut self, measure: Measure, factory: Factory<P>, props: P) {
         let child_fn = Box::new(move || (measure, factory(Component::new(), props.clone())));
@@ -113,8 +118,12 @@ impl Node {
     }
 
     /// Returns this node's attributes.
-    pub(crate) fn attributes(&self) -> NodeAttributes {
-        self.attributes
+    pub(crate) fn attributes(&self) -> &NodeAttributes {
+        &self.attributes
+    }
+
+    pub(crate) fn attributes_mut(&mut self) -> &mut NodeAttributes {
+        &mut self.attributes
     }
 
     /// Returns functions for mounting this node's children.
@@ -144,6 +153,7 @@ pub struct NodeAttributes {
     pub clipped: bool,
     pub focusable: bool,
     pub flow: Flow,
+    pub offset: (i32, i32),
 }
 
 impl Default for NodeAttributes {
@@ -152,6 +162,7 @@ impl Default for NodeAttributes {
             clipped: true,
             focusable: false,
             flow: Flow::default(),
+            offset: (0, 0),
         }
     }
 }

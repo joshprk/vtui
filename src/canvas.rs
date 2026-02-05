@@ -17,13 +17,16 @@ impl<'a> Canvas<'a> {
     /// Creates a new canvas with the given region.
     pub fn new(node: &ArenaNode, buf: &'a mut Buffer) -> Self {
         let rect = node.area();
-        let clipped = node.attributes().clipped;
+        let attributes = node.attributes();
+        let clipped = attributes.clipped;
+        let (offset_x, offset_y) = attributes.offset;
+
         Self {
             buf,
             clipped,
             rect,
-            offset_x: 0,
-            offset_y: 0,
+            offset_x,
+            offset_y,
         }
     }
 }
@@ -42,12 +45,6 @@ impl Canvas<'_> {
     /// Returns a [`LogicalRect`] with the same width and height, but with an origin of `(0, 0)`.
     pub fn area(&self) -> LogicalRect {
         LogicalRect::new(0, 0, self.rect.width, self.rect.height)
-    }
-
-    /// Sets the offset of this canvas.
-    pub(crate) fn set_offset(&mut self, offset_x: i32, offset_y: i32) {
-        self.offset_x = offset_x;
-        self.offset_y = offset_y;
     }
 
     /// Draws text content at a given position.

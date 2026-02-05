@@ -100,7 +100,7 @@ impl ArenaNode {
         self.rect
     }
 
-    pub fn attributes(&self) -> NodeAttributes {
+    pub fn attributes(&self) -> &NodeAttributes {
         self.node.attributes()
     }
 
