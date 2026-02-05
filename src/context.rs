@@ -2,7 +2,7 @@ use core::ops::Deref;
 
 use crate::{
     arena::NodeId,
-    events::{FocusChanged, Tick},
+    events::FocusChanged,
     transport::{Event, MessageSender, MouseEvent},
 };
 
@@ -29,9 +29,7 @@ impl Command {
                     let _ = ctx.handle().send(FocusChanged {});
                 }
             }
-            Self::Tick => {
-                let _ = ctx.handle().send(Tick {});
-            }
+            Self::Tick => ctx.tick_requested = true,
         }
     }
 }
@@ -41,6 +39,7 @@ pub struct Context {
     target: Option<NodeId>,
     focused: Option<NodeId>,
     command_buffer: Vec<Command>,
+    tick_requested: bool,
     shutdown_requested: bool,
 }
 
@@ -51,6 +50,7 @@ impl Context {
             target: None,
             focused: None,
             command_buffer: Vec::default(),
+            tick_requested: false,
             shutdown_requested: false,
         }
     }
@@ -71,6 +71,14 @@ impl Context {
 
     pub fn set_target(&mut self, target: Option<NodeId>) {
         self.target = target;
+    }
+
+    pub fn tick_requested(&self) -> bool {
+        self.tick_requested
+    }
+
+    pub fn clear_tick_request(&mut self) {
+        self.tick_requested = false;
     }
 
     pub fn shutdown_requested(&self) -> bool {
@@ -146,12 +154,6 @@ impl<E: Event> EventContext<'_, E> {
     ///
     /// This is useful for functionality requiring the flow of time, such as animations.
     pub fn request_tick(&mut self) {
-        for cmd in self.context.queued() {
-            if matches!(cmd, Command::Tick) {
-                return;
-            }
-        }
-
         self.context.enqueue(Command::Tick);
     }
 

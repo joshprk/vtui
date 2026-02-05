@@ -3,12 +3,7 @@ use std::time::{Duration, Instant};
 use ratatui::prelude::Backend;
 
 use crate::{
-    arena::Arena,
-    component::Node,
-    context::Context,
-    drivers::Driver,
-    errors::RuntimeError,
-    transport::{Dispatch, Message, MessageBus},
+    arena::Arena, component::Node, context::Context, drivers::Driver, errors::RuntimeError, events::Tick, transport::{Dispatch, Message, MessageBus}
 };
 
 pub struct Runtime {
@@ -42,6 +37,11 @@ impl Runtime {
     }
 
     pub fn update(&mut self) {
+        if self.context.tick_requested() {
+            let _ = self.bus.handle().send(Tick {});
+            self.context.clear_tick_request();
+        }
+
         let deadline = Instant::now() + Duration::from_millis(16);
         let msg = self.bus.recv();
 
