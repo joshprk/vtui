@@ -150,7 +150,7 @@ impl<E: Event> EventContext<'_, E> {
             .enqueue(Command::ResignFocus(self.current_node));
     }
 
-    /// Requests a [`Tick`] event.
+    /// Requests a [`Tick`](crate::events::Tick) event.
     ///
     /// This is useful for functionality requiring the flow of time, such as animations.
     pub fn request_tick(&mut self) {
