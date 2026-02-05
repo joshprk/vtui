@@ -3,7 +3,13 @@ use std::time::{Duration, Instant};
 use ratatui::prelude::Backend;
 
 use crate::{
-    arena::Arena, component::Node, context::Context, drivers::Driver, errors::RuntimeError, events::Tick, transport::{Dispatch, Message, MessageBus}
+    arena::Arena,
+    component::Node,
+    context::Context,
+    drivers::Driver,
+    errors::RuntimeError,
+    events::Tick,
+    transport::{Dispatch, Message, MessageBus},
 };
 
 pub struct Runtime {
