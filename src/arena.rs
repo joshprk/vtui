@@ -68,10 +68,7 @@ impl Arena {
     /// Returns an iterator in the forward traversal order.
     pub fn traverse(&self) -> impl DoubleEndedIterator<Item = (NodeId, &ArenaNode)> {
         self.traversal.iter().map(|&id| {
-            let node = self
-                .nodes
-                .get(id)
-                .expect("traversal order has invalid id");
+            let node = self.nodes.get(id).expect("traversal order has invalid id");
             (id, node)
         })
     }
