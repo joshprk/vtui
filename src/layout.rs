@@ -115,6 +115,17 @@ impl LogicalRect {
     }
 }
 
+/// A layout mode that changes how a parent node interprets [`Measure`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Placement {
+    /// Places measures with exact, deterministic sizes.
+    #[default]
+    Overflow,
+
+    /// Constrains measures to the parent's render region.
+    Fit,
+}
+
 /// A layout quantity describing how much space a node occupies along its parent's primary axis.
 #[derive(Debug, Clone, Copy)]
 pub enum Measure {

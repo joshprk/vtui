@@ -3,7 +3,7 @@ use core::cell::RefCell;
 use crate::{
     canvas::Canvas,
     context::EventContext,
-    layout::{Flow, Measure},
+    layout::{Flow, Measure, Placement},
     listeners::Listeners,
     state::{State, StateStore},
     transport::Event,
@@ -95,6 +95,11 @@ impl Node {
         self.attributes.flow = flow;
     }
 
+    /// Sets the [`Placement`] of this node.
+    pub fn set_placement(&mut self, placement: Placement) {
+        self.attributes.placement = placement;
+    }
+
     /// Sets the canvas offset of this node.
     pub fn set_offset(&mut self, x: i32, y: i32) {
         self.attributes.offset = (x, y);
@@ -153,6 +158,7 @@ pub struct NodeAttributes {
     pub clipped: bool,
     pub focusable: bool,
     pub flow: Flow,
+    pub placement: Placement,
     pub offset: (i32, i32),
 }
 
@@ -162,6 +168,7 @@ impl Default for NodeAttributes {
             clipped: true,
             focusable: false,
             flow: Flow::default(),
+            placement: Placement::default(),
             offset: (0, 0),
         }
     }

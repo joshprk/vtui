@@ -65,7 +65,7 @@ pub mod prelude {
             KeyCode, MediaKeyCode, ModifierKeyCode, ModifierKeyDirection, MouseButton,
             MouseScrollDirection,
         },
-        layout::{Flow, LogicalRect, Measure},
+        layout::{Flow, LogicalRect, Placement, Measure},
         state::State,
     };
     pub use vtui_macros::component;
