@@ -82,7 +82,10 @@ impl Arena {
     ///
     /// Panics if the [`NodeId`] is invalid.
     pub fn set_offset(&mut self, id: NodeId, x: i32, y: i32) {
-        let node = self.nodes.get_mut(id).expect("set_offset received invalid id");
+        let node = self
+            .nodes
+            .get_mut(id)
+            .expect("set_offset received invalid id");
         node.node.set_offset(x, y);
     }
 }

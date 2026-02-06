@@ -122,7 +122,8 @@ impl<'d, E: Event> EventContext<'d, E> {
 impl<E: Event> EventContext<'_, E> {
     /// Sets the [`Canvas`](crate::canvas::Canvas) offset for this component.
     pub fn set_offset(&mut self, x: i32, y: i32) {
-        self.context.enqueue(Command::SetOffset(self.current_node, x, y));
+        self.context
+            .enqueue(Command::SetOffset(self.current_node, x, y));
     }
 
     /// Requests focus for this component.
