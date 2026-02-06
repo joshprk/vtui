@@ -4,7 +4,7 @@ resolver = "3"
 
 [package]
 name = "vtui"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 description = "A simple terminal UI framework"
 repository = "https://github.com/joshprk/vtui"
@@ -25,4 +25,4 @@ slotmap = "1.1.1"
 thiserror = "2.0.18"
 unicode-segmentation = "1.12.0"
 unicode-width = "0.2.2"
-vtui-macros = { version = "0.4.1", path = "macros" }
+vtui-macros = { version = "0.4.2", path = "macros" }
