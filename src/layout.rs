@@ -164,15 +164,18 @@ struct Variable {
     size: i32,
 }
 
-/// Computes the layout of an area across one or more measures.
-///
-/// It is possible for a layout to overflow its area.
-pub fn compute_split<I>(flow: Flow, area: LogicalRect, measures: I) -> Vec<LogicalRect>
+pub fn compute_split<I>(
+    flow: Flow,
+    placement: Placement,
+    area: LogicalRect,
+    measures: I,
+) -> Vec<LogicalRect>
 where
     I: IntoIterator<Item = Measure>,
 {
     match flow {
-        Flow::Horizontal => split_measures(area.x, area.width, measures)
+        Flow::Horizontal => split_measures(placement, area.x, area.width, measures)
+            .into_iter()
             .map(|v| LogicalRect {
                 x: v.start,
                 y: area.y,
@@ -180,7 +183,8 @@ where
                 height: area.height,
             })
             .collect(),
-        Flow::Vertical => split_measures(area.y, area.height, measures)
+        Flow::Vertical => split_measures(placement, area.y, area.height, measures)
+            .into_iter()
             .map(|v| LogicalRect {
                 x: area.x,
                 y: v.start,
@@ -191,24 +195,99 @@ where
     }
 }
 
-/// Computes the split of an one-dimensional line across one or more measures.
-fn split_measures<I>(start: i32, viewport: i32, measures: I) -> impl Iterator<Item = Variable>
+fn split_measures<I>(placement: Placement, start: i32, viewport: i32, measures: I) -> Vec<Variable>
 where
     I: IntoIterator<Item = Measure>,
 {
-    let mut cursor = start;
+    match placement {
+        Placement::Overflow => split_overflow(start, viewport, measures),
+        Placement::Fit => split_fit(start, viewport, measures),
+    }
+}
 
-    measures.into_iter().map(move |measure| {
-        let size = match measure {
-            Measure::Exact(size) => size,
-            Measure::Percent(percent) => (viewport as f64 * percent).round() as i32,
-        };
+fn split_overflow<I>(start: i32, viewport: i32, measures: I) -> Vec<Variable>
+where
+    I: IntoIterator<Item = Measure>,
+{
+    measures
+        .into_iter()
+        .scan(start, |cursor, measure| {
+            let size = match measure {
+                Measure::Exact(n) => n.max(0),
+                Measure::Percent(p) => (viewport as f64 * p.max(0.0)).round() as i32,
+            };
+            let v = Variable {
+                start: *cursor,
+                size,
+            };
+            *cursor += size;
+            Some(v)
+        })
+        .collect()
+}
 
-        let v = Variable {
-            start: cursor,
-            size,
-        };
-        cursor += size;
-        v
-    })
+fn split_fit<I>(start: i32, viewport: i32, measures: I) -> Vec<Variable>
+where
+    I: IntoIterator<Item = Measure>,
+{
+    let measures: Vec<Measure> = measures.into_iter().collect();
+
+    // Pass 1: sum Exact sizes and Percent weights
+    let mut sum_exact: i32 = 0;
+    let mut total_weight: f64 = 0.0;
+
+    for measure in &measures {
+        match *measure {
+            Measure::Exact(n) => sum_exact += n.max(0),
+            Measure::Percent(w) => total_weight += w.max(0.0),
+        }
+    }
+
+    let remaining = (viewport - sum_exact).max(0);
+
+    // Pass 2: compute sizes using largest-remainder for percent measures
+    let mut sizes: Vec<i32> = Vec::with_capacity(measures.len());
+    let mut percent_indices: Vec<(usize, f64)> = Vec::new();
+    let mut floor_sum: i32 = 0;
+
+    for (i, measure) in measures.iter().enumerate() {
+        match *measure {
+            Measure::Exact(n) => sizes.push(n.max(0)),
+            Measure::Percent(w) => {
+                let w = w.max(0.0);
+                if total_weight == 0.0 {
+                    sizes.push(0);
+                } else {
+                    let raw = (remaining as f64) * w / total_weight;
+                    let floored = raw.floor() as i32;
+                    let frac = raw - (floored as f64);
+                    sizes.push(floored);
+                    floor_sum += floored;
+                    percent_indices.push((i, frac));
+                }
+            }
+        }
+    }
+
+    // Distribute leftover cells to items with largest fractional parts
+    let leftover = remaining - floor_sum;
+    if leftover > 0 {
+        percent_indices.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        for (idx, _) in percent_indices.into_iter().take(leftover as usize) {
+            sizes[idx] += 1;
+        }
+    }
+
+    // Convert to Variables
+    sizes
+        .into_iter()
+        .scan(start, |cursor, size| {
+            let v = Variable {
+                start: *cursor,
+                size,
+            };
+            *cursor += size;
+            Some(v)
+        })
+        .collect()
 }

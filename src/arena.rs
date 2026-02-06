@@ -130,10 +130,11 @@ fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport
         nodes[id].rect = rect;
 
         let flow = nodes[id].node.flow();
+        let placement = nodes[id].node.attributes().placement;
         let children = nodes[id].children.iter().collect::<Vec<_>>();
         let measures = children.iter().map(|(m, _)| *m);
 
-        let splits = compute_split(flow, rect, measures);
+        let splits = compute_split(flow, placement, rect, measures);
 
         for ((_, child_id), child_rect) in children.into_iter().zip(splits).rev() {
             stack.push((*child_id, child_rect));
