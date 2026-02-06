@@ -71,7 +71,7 @@ impl Arena {
             let node = self
                 .nodes
                 .get(id)
-                .expect("Traversal order has invalid NodeId");
+                .expect("traversal order has invalid id");
             (id, node)
         })
     }
