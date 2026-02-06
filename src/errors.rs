@@ -11,8 +11,8 @@ pub enum RuntimeError {
 #[derive(Debug)]
 pub struct SendError;
 
-impl<T> From<flume::SendError<T>> for SendError {
-    fn from(_: flume::SendError<T>) -> Self {
+impl<T> From<async_channel::SendError<T>> for SendError {
+    fn from(_: async_channel::SendError<T>) -> Self {
         Self
     }
 }

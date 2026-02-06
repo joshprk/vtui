@@ -42,18 +42,21 @@ impl Runtime {
         Ok(())
     }
 
-    pub fn update(&mut self) {
+    pub async fn update(&mut self) {
         if self.context.tick_requested() {
             let _ = self.bus.handle().send(Tick {});
             self.context.clear_tick_request();
         }
 
         let deadline = Instant::now() + Duration::from_millis(16);
-        let msg = self.bus.recv();
+        let msg = self.bus.recv().await;
 
         self.dispatch(msg);
 
-        while let Some(msg) = self.bus.recv_timeout(deadline - Instant::now()) {
+        while let Some(msg) = {
+            let timeout = deadline.saturating_duration_since(Instant::now());
+            self.bus.recv_timeout(timeout).await
+        } {
             self.dispatch(msg);
         }
     }
