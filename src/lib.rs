@@ -44,7 +44,7 @@
 //! Furthermore, it is highly extensible through its broadcast-only event system. The developer
 //! never needs to worry about hidden filtering behavior, as filtering is the responsibility of the
 //! listening component. vtui offers batteries-included systems such as a focus system to help the
-//! developer route events to their intended components.
+//! developer route events to components.
 
 extern crate alloc;
 
