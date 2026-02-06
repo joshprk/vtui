@@ -136,6 +136,11 @@ pub enum Measure {
     ///
     /// A viewport unit is defined as the space allocated to the parent along its primary axis.
     Percent(f64),
+
+    /// Positioned locally within the parent without participating in layout flow.
+    ///
+    /// Defined as a tuple of `(x, y, width, height)`.
+    Fixed(i32, i32, i32, i32),
 }
 
 impl Default for Measure {
@@ -173,8 +178,30 @@ pub fn compute_split<I>(
 where
     I: IntoIterator<Item = Measure>,
 {
-    match flow {
-        Flow::Horizontal => split_measures(placement, area.x, area.width, measures)
+    let measures: Vec<Measure> = measures.into_iter().collect();
+
+    // Separate Fixed measures from flow measures, tracking original indices
+    let mut fixed_rects: Vec<(usize, LogicalRect)> = Vec::new();
+    let mut flow_measures: Vec<(usize, Measure)> = Vec::new();
+
+    for (i, measure) in measures.into_iter().enumerate() {
+        match measure {
+            Measure::Fixed(x, y, width, height) => {
+                fixed_rects.push((i, LogicalRect {
+                    x: area.x + x,
+                    y: area.y + y,
+                    width,
+                    height,
+                }));
+            }
+            m => flow_measures.push((i, m)),
+        }
+    }
+
+    // Compute layout for flow measures
+    let flow_only = flow_measures.iter().map(|(_, m)| *m);
+    let splits: Vec<LogicalRect> = match flow {
+        Flow::Horizontal => split_measures(placement, area.x, area.width, flow_only)
             .into_iter()
             .map(|v| LogicalRect {
                 x: v.start,
@@ -183,7 +210,7 @@ where
                 height: area.height,
             })
             .collect(),
-        Flow::Vertical => split_measures(placement, area.y, area.height, measures)
+        Flow::Vertical => split_measures(placement, area.y, area.height, flow_only)
             .into_iter()
             .map(|v| LogicalRect {
                 x: area.x,
@@ -192,7 +219,20 @@ where
                 height: v.size,
             })
             .collect(),
+    };
+
+    // Merge back into original order
+    let total = flow_measures.len() + fixed_rects.len();
+    let mut result: Vec<LogicalRect> = vec![LogicalRect::zeroed(); total];
+
+    for ((orig_idx, _), rect) in flow_measures.into_iter().zip(splits) {
+        result[orig_idx] = rect;
     }
+    for (orig_idx, rect) in fixed_rects {
+        result[orig_idx] = rect;
+    }
+
+    result
 }
 
 fn split_measures<I>(placement: Placement, start: i32, viewport: i32, measures: I) -> Vec<Variable>
@@ -215,11 +255,9 @@ where
             let size = match measure {
                 Measure::Exact(n) => n.max(0),
                 Measure::Percent(p) => (viewport as f64 * p.max(0.0)).round() as i32,
+                Measure::Fixed(..) => unreachable!("fixed measures are handled in compute_split"),
             };
-            let v = Variable {
-                start: *cursor,
-                size,
-            };
+            let v = Variable { start: *cursor, size };
             *cursor += size;
             Some(v)
         })
@@ -240,6 +278,7 @@ where
         match *measure {
             Measure::Exact(n) => sum_exact += n.max(0),
             Measure::Percent(w) => total_weight += w.max(0.0),
+            Measure::Fixed(..) => unreachable!("fixed measures are handled in compute_split"),
         }
     }
 
@@ -266,6 +305,7 @@ where
                     percent_indices.push((i, frac));
                 }
             }
+            Measure::Fixed(..) => unreachable!("fixed measures are handled in compute_split"),
         }
     }
 
