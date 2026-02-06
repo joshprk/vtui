@@ -58,12 +58,6 @@ impl Runtime {
         }
     }
 
-    pub fn commit(&mut self) {
-        for cmd in self.context.drain_commands() {
-            cmd.reduce(&mut self.context, &mut self.arena);
-        }
-    }
-
     pub fn should_exit(&self) -> bool {
         self.context.shutdown_requested()
     }
@@ -72,5 +66,11 @@ impl Runtime {
         let dispatch = Dispatch::new(&mut self.arena, &mut self.context);
         msg.dispatch(dispatch);
         self.commit();
+    }
+
+    fn commit(&mut self) {
+        for cmd in self.context.drain_commands() {
+            cmd.reduce(&mut self.context, &mut self.arena);
+        }
     }
 }
