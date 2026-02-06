@@ -20,7 +20,10 @@ impl Command {
             Self::Shutdown => ctx.shutdown_requested = true,
             Self::SetOffset(id, x, y) => arena.set_offset(id, x, y),
             Self::SetFocus(id) => {
-                if ctx.focused != Some(id) {
+                if let Some(node) = arena.get(id)
+                    && node.attributes().focusable
+                    && ctx.focused != Some(id)
+                {
                     ctx.focused = Some(id);
                     let _ = ctx.handle().send(FocusChanged {});
                 }
@@ -128,7 +131,7 @@ impl<E: Event> EventContext<'_, E> {
 
     /// Requests focus for this component.
     ///
-    /// Focus is assigned to the first component that requested it during an update.
+    /// Focus is assigned to the first focusable component that requested it during an update.
     ///
     /// If successful, a [`FocusChanged`] event is emitted.
     pub fn request_focus(&mut self) {
