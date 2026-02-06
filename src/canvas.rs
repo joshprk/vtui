@@ -15,7 +15,7 @@ pub struct Canvas<'a> {
 
 impl<'a> Canvas<'a> {
     /// Creates a new canvas with the given region.
-    pub fn new(node: &ArenaNode, buf: &'a mut Buffer) -> Self {
+    pub(crate) fn new(node: &ArenaNode, buf: &'a mut Buffer) -> Self {
         let rect = node.area();
         let attributes = node.attributes();
         let clipped = attributes.clipped;

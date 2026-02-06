@@ -75,6 +75,16 @@ impl Arena {
             (id, node)
         })
     }
+
+    /// Sets the render offset of a node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the [`NodeId`] is invalid.
+    pub fn set_offset(&mut self, id: NodeId, x: i32, y: i32) {
+        let node = self.nodes.get_mut(id).expect("set_offset received invalid id");
+        node.node.set_offset(x, y);
+    }
 }
 
 new_key_type! { pub struct NodeId; }

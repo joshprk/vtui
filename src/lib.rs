@@ -49,6 +49,7 @@
 extern crate alloc;
 
 pub use crate::{
+    canvas::Canvas,
     context::EventContext,
     launch::{LaunchBuilder, launch},
 };

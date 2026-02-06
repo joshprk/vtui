@@ -60,7 +60,7 @@ impl Runtime {
 
     pub fn commit(&mut self) {
         for cmd in self.context.drain_commands() {
-            cmd.reduce(&mut self.context);
+            cmd.reduce(&mut self.context, &mut self.arena);
         }
     }
 

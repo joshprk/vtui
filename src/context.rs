@@ -1,22 +1,24 @@
 use core::ops::Deref;
 
 use crate::{
-    arena::NodeId,
+    arena::{Arena, NodeId},
     events::FocusChanged,
     transport::{Event, MessageSender, MouseEvent},
 };
 
 pub enum Command {
     Shutdown,
+    SetOffset(NodeId, i32, i32),
     SetFocus(NodeId),
     ResignFocus(NodeId),
     Tick,
 }
 
 impl Command {
-    pub fn reduce(self, ctx: &mut Context) {
+    pub fn reduce(self, ctx: &mut Context, arena: &mut Arena) {
         match self {
             Self::Shutdown => ctx.shutdown_requested = true,
+            Self::SetOffset(id, x, y) => arena.set_offset(id, x, y),
             Self::SetFocus(id) => {
                 if ctx.focused != Some(id) {
                     ctx.focused = Some(id);
@@ -118,6 +120,11 @@ impl<'d, E: Event> EventContext<'d, E> {
 }
 
 impl<E: Event> EventContext<'_, E> {
+    /// Sets the [`Canvas`](crate::canvas::Canvas) offset for this component.
+    pub fn set_offset(&mut self, x: i32, y: i32) {
+        self.context.enqueue(Command::SetOffset(self.current_node, x, y));
+    }
+
     /// Requests focus for this component.
     ///
     /// Focus is assigned to the first component that requested it during an update.
