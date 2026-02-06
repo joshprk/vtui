@@ -10,8 +10,8 @@ fn App(c: Component) -> Node {
     });
 
     c.compose(|node| {
-        node.child(Measure::Viewport(0.5), Test, ());
-        node.child(Measure::Viewport(0.5), Test, ());
+        node.child(Measure::Percent(0.5), Test, ());
+        node.child(Measure::Percent(0.5), Test, ());
         node.set_flow(Flow::Vertical);
     })
 }

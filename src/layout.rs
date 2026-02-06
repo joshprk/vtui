@@ -124,12 +124,12 @@ pub enum Measure {
     /// Occupies a fraction of the viewport size on the primary axis.
     ///
     /// A viewport unit is defined as the space allocated to the parent along its primary axis.
-    Viewport(f64),
+    Percent(f64),
 }
 
 impl Default for Measure {
     fn default() -> Self {
-        Measure::Viewport(1.0)
+        Measure::Percent(1.0)
     }
 }
 
@@ -190,7 +190,7 @@ where
     measures.into_iter().map(move |measure| {
         let size = match measure {
             Measure::Exact(size) => size,
-            Measure::Viewport(percent) => (viewport as f64 * percent).round() as i32,
+            Measure::Percent(percent) => (viewport as f64 * percent).round() as i32,
         };
 
         let v = Variable {
