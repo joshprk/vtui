@@ -2,31 +2,29 @@ use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-use crate::{arena::ArenaNode, layout::LogicalRect};
+use crate::{arena::{ArenaNode, NodeId}, component::NodeAttributes, context::Context, layout::LogicalRect};
 
 /// A drawing surface scoped to a rectangular region of the terminal buffer.
 pub struct Canvas<'a> {
     buf: &'a mut Buffer,
-    clipped: bool,
+    context: &'a Context,
+    current_node: NodeId,
+    attributes: &'a NodeAttributes,
     rect: LogicalRect,
-    offset_x: i32,
-    offset_y: i32,
 }
 
 impl<'a> Canvas<'a> {
     /// Creates a new canvas with the given region.
-    pub(crate) fn new(node: &ArenaNode, buf: &'a mut Buffer) -> Self {
+    pub(crate) fn new(node: &'a ArenaNode, buf: &'a mut Buffer, context: &'a Context, current_node: NodeId) -> Self {
         let rect = node.area();
         let attributes = node.attributes();
-        let clipped = attributes.clipped;
-        let (offset_x, offset_y) = attributes.offset;
 
         Self {
             buf,
-            clipped,
+            context,
+            current_node,
+            attributes,
             rect,
-            offset_x,
-            offset_y,
         }
     }
 }
@@ -45,6 +43,11 @@ impl Canvas<'_> {
     /// Returns a [`LogicalRect`] with the same width and height, but with an origin of `(0, 0)`.
     pub fn area(&self) -> LogicalRect {
         LogicalRect::new(0, 0, self.rect.width, self.rect.height)
+    }
+
+    /// Determines if this component is focused.
+    pub fn is_focused(&self) -> bool {
+        self.context.focused() == Some(self.current_node)
     }
 
     /// Draws text content at a given position.
@@ -134,7 +137,8 @@ impl Canvas<'_> {
 
     /// An internal helper that draws a `ratatui` widget at a given region.
     fn render_widget(&mut self, rect: LogicalRect, widget: impl Widget) {
-        let rect = rect.with_offset(self.offset_x - self.rect.x, self.offset_y - self.rect.y);
+        let (offset_x, offset_y) = self.attributes.offset;
+        let rect = rect.with_offset(offset_x - self.rect.x, offset_y - self.rect.y);
 
         if !rect.intersects(self.rect) {
             return;
@@ -193,16 +197,18 @@ impl Canvas<'_> {
 
     /// Converts a x-coordinate local to this canvas to the global buffer space.
     fn get_buf_column(&self, x: i32) -> i32 {
-        self.rect.x + x - self.offset_x
+        let (offset_x, _) = self.attributes.offset;
+        self.rect.x + x - offset_x
     }
 
     /// Converts a y-coordinate local to this canvas to the global buffer spcae.
     fn get_buf_row(&self, y: i32) -> i32 {
-        self.rect.y + y - self.offset_y
+        let (_, offset_y) = self.attributes.offset;
+        self.rect.y + y - offset_y
     }
 
     /// Determines if content should be drawn even if outside of the canvas region.
     fn clipped(&self) -> bool {
-        self.clipped
+        self.attributes.clipped
     }
 }

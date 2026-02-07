@@ -127,10 +127,6 @@ impl Node {
         &self.attributes
     }
 
-    pub(crate) fn attributes_mut(&mut self) -> &mut NodeAttributes {
-        &mut self.attributes
-    }
-
     /// Returns functions for mounting this node's children.
     pub(crate) fn children(&self) -> &Vec<BoxedChild> {
         &self.children

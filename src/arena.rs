@@ -35,14 +35,14 @@ impl From<Node> for Arena {
 
 impl Arena {
     /// Draws the node tree on the given frame.
-    pub fn render(&mut self, frame: &mut Frame) {
+    pub fn render(&mut self, frame: &mut Frame, context: &Context) {
         compute_layout(&mut self.nodes, self.root, frame.area().into());
 
         let buf = frame.buffer_mut();
 
         for &id in self.traversal.iter() {
-            let node = &mut self.nodes[id];
-            let mut canvas = Canvas::new(node, buf);
+            let node = &self.nodes[id];
+            let mut canvas = Canvas::new(node, buf, context, id);
 
             node.render(&mut canvas);
         }

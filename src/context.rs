@@ -64,6 +64,10 @@ impl Context {
         core::mem::take(&mut self.command_buffer)
     }
 
+    pub fn focused(&self) -> Option<NodeId> {
+        self.focused
+    }
+
     pub fn handle(&self) -> &MessageSender {
         &self.handle
     }

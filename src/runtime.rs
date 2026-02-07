@@ -37,7 +37,10 @@ impl Runtime {
         RuntimeError: From<<<D as Driver>::Backend as Backend>::Error>,
     {
         let terminal = driver.terminal();
-        terminal.draw(|f| self.arena.render(f))?;
+
+        terminal.draw(|f| {
+            self.arena.render(f, &self.context);
+        })?;
 
         Ok(())
     }
