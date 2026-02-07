@@ -5,7 +5,7 @@ use crate::{
     canvas::Canvas,
     component::{Node, NodeAttributes},
     context::{Context, EventContext},
-    layout::{LogicalRect, Measure, compute_split},
+    layout::{LogicalRect, compute_split},
     transport::Event,
 };
 
@@ -83,7 +83,7 @@ impl Arena {
             .nodes
             .get_mut(id)
             .expect("set_offset received invalid id");
-        node.node.set_offset(x, y);
+        node.node.attributes_mut().offset = (x, y);
     }
 }
 
@@ -92,7 +92,7 @@ new_key_type! { pub struct NodeId; }
 pub struct ArenaNode {
     node: Node,
     rect: LogicalRect,
-    children: Vec<(Measure, NodeId)>,
+    children: Vec<NodeId>,
 }
 
 impl From<Node> for ArenaNode {
@@ -129,15 +129,22 @@ fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport
     while let Some((id, rect)) = stack.pop() {
         nodes[id].rect = rect;
 
-        let flow = nodes[id].node.flow();
-        let placement = nodes[id].node.attributes().placement;
-        let children = nodes[id].children.iter().collect::<Vec<_>>();
-        let measures = children.iter().map(|(m, _)| *m);
+        let node = &nodes[id].node;
+        let children = &nodes[id].children;
+        let flow = node.flow();
+        let placement = node.attributes().placement;
+
+        let measures = children
+            .iter()
+            .map(|&child_id| {
+                let child_node = &nodes[child_id].node;
+                child_node.attributes().measure
+            });
 
         let splits = compute_split(flow, placement, rect, measures);
 
-        for ((_, child_id), child_rect) in children.into_iter().zip(splits).rev() {
-            stack.push((*child_id, child_rect));
+        for (id, rect) in children.iter().zip(splits).rev() {
+            stack.push((*id, rect));
         }
     }
 }
@@ -152,8 +159,8 @@ fn compute_traversal(nodes: &SlotMap<NodeId, ArenaNode>, root: NodeId) -> Vec<No
     while let Some(id) = stack.pop() {
         order.push(id);
 
-        for &(_, child_id) in nodes[id].children.iter().rev() {
-            stack.push(child_id);
+        for &id in nodes[id].children.iter().rev() {
+            stack.push(id);
         }
     }
 
@@ -171,9 +178,9 @@ fn remount_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
         .map(|child_fn| child_fn())
         .collect::<Vec<_>>();
 
-    for (measure, child) in children {
+    for child in children {
         let child_id = nodes.insert(child.into());
-        nodes[root_id].children.push((measure, child_id));
+        nodes[root_id].children.push(child_id);
         remount_subtree(nodes, child_id);
     }
 }
@@ -182,7 +189,7 @@ fn remount_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
 fn remove_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
     let old = core::mem::take(&mut nodes[root_id].children);
 
-    for (_, id) in old {
+    for id in old {
         remove_subtree(nodes, id);
         nodes.remove(id);
     }

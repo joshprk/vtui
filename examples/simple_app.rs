@@ -1,4 +1,4 @@
-use ratatui::style::Style;
+use ratatui::widgets::Paragraph;
 use vtui::{events::*, prelude::*};
 
 #[component]
@@ -10,24 +10,25 @@ fn App(c: Component) -> Node {
     });
 
     c.compose(|node| {
-        node.child(Measure::Percent(0.5), Test, ());
-        node.child(Measure::Percent(0.5), Test, ());
-        node.set_flow(Flow::Vertical);
+        node.child(Counter, ());
+        node.child(Counter, ());
     })
 }
 
 #[component]
-fn Test(c: Component) -> Node {
+fn Counter(c: Component) -> Node {
     let mut clicks = c.state(0);
 
     c.draw(move |canvas| {
-        let text = format!("Clicks: {}", clicks.read());
-        canvas.text(0, 0, text, Style::default());
+        let paragraph = Paragraph::new(format!("Clicks: {}", clicks.read()))
+            .centered();
+
+        canvas.widget(canvas.area(), paragraph);
     });
 
     c.listen::<MouseDown>(move |event| {
-        if event.is_mouse_hit() && event.button == MouseButton::Left {
-            clicks.set(|n| *n += 1);
+        if event.is_mouse_hit() {
+            clicks.set(|c| *c += 1);
         }
     });
 

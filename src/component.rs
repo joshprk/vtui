@@ -9,7 +9,7 @@ use crate::{
     transport::Event,
 };
 
-pub type BoxedChild = Box<dyn Fn() -> (Measure, Node)>;
+pub type BoxedChild = Box<dyn Fn() -> Node>;
 pub type BoxedRenderer = Box<dyn Fn(&mut Canvas)>;
 pub type Factory<P = ()> = fn(Component, P) -> Node;
 
@@ -24,6 +24,36 @@ pub struct Component {
 }
 
 impl Component {
+    /// Determines whether this component should draw outside of its visual bounds.
+    pub fn set_clipped(&self, clipped: bool) {
+        self.node.borrow_mut().attributes.clipped = clipped;
+    }
+
+    /// Determines whether this component can capture focus.
+    pub fn set_focusable(&self, focusable: bool) {
+        self.node.borrow_mut().attributes.focusable = focusable;
+    }
+
+    /// Sets the [`Flow`] of this node.
+    pub fn set_flow(&self, flow: Flow) {
+        self.node.borrow_mut().attributes.flow = flow;
+    }
+
+    /// Sets the [`Placement`] of this node.
+    pub fn set_placement(&self, placement: Placement) {
+        self.node.borrow_mut().attributes.placement = placement;
+    }
+
+    /// Sets the canvas offset of this node.
+    pub fn set_offset(&self, x: i32, y: i32) {
+        self.node.borrow_mut().attributes.offset = (x, y);
+    }
+
+    /// Sets the default [`Measure`] of this node.
+    pub fn set_measure(&self, measure: Measure) {
+        self.node.borrow_mut().attributes.measure = measure;
+    }
+
     /// Defines a render function for this component.
     pub fn draw(&self, renderer: impl Fn(&mut Canvas) + 'static) {
         let renderer = Box::new(renderer);
@@ -80,35 +110,9 @@ impl From<Component> for Node {
 }
 
 impl Node {
-    /// Determines whether this component should draw outside of its visual bounds.
-    pub fn set_clipped(&mut self, clipped: bool) {
-        self.attributes.clipped = clipped;
-    }
-
-    /// Determines whether this component can capture focus.
-    pub fn set_focusable(&mut self, focusable: bool) {
-        self.attributes.focusable = focusable;
-    }
-
-    /// Sets the [`Flow`] of this node.
-    pub fn set_flow(&mut self, flow: Flow) {
-        self.attributes.flow = flow;
-    }
-
-    /// Sets the [`Placement`] of this node.
-    pub fn set_placement(&mut self, placement: Placement) {
-        self.attributes.placement = placement;
-    }
-
-    /// Sets the canvas offset of this node.
-    pub fn set_offset(&mut self, x: i32, y: i32) {
-        self.attributes.offset = (x, y);
-    }
-
-    /// Adds a child to this node.
-    pub fn child<P: Props>(&mut self, measure: Measure, factory: Factory<P>, props: P) {
-        let child_fn = Box::new(move || (measure, factory(Component::new(), props.clone())));
-        self.children.push(child_fn)
+    pub fn child<P: Props>(&mut self, factory: Factory<P>, props: P) {
+        let child_fn = Box::new(move || factory(Component::new(), props.clone()));
+        self.children.push(child_fn);
     }
 
     /// Creates a new node.
@@ -125,6 +129,10 @@ impl Node {
     /// Returns this node's attributes.
     pub(crate) fn attributes(&self) -> &NodeAttributes {
         &self.attributes
+    }
+
+    pub(crate) fn attributes_mut(&mut self) -> &mut NodeAttributes {
+        &mut self.attributes
     }
 
     /// Returns functions for mounting this node's children.
@@ -156,4 +164,5 @@ pub struct NodeAttributes {
     pub flow: Flow,
     pub placement: Placement,
     pub offset: (i32, i32),
+    pub measure: Measure,
 }
