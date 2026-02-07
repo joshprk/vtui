@@ -149,23 +149,11 @@ impl Node {
 }
 
 /// Describes various properties for a [`Node`].
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct NodeAttributes {
     pub clipped: bool,
     pub focusable: bool,
     pub flow: Flow,
     pub placement: Placement,
     pub offset: (i32, i32),
-}
-
-impl Default for NodeAttributes {
-    fn default() -> Self {
-        Self {
-            clipped: true,
-            focusable: false,
-            flow: Flow::default(),
-            placement: Placement::default(),
-            offset: (0, 0),
-        }
-    }
 }
