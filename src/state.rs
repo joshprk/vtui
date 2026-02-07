@@ -52,10 +52,9 @@ impl<T> State<T> {
     /// behavior between siblings to prevent race conditions.
     pub fn set<F>(&mut self, write: F)
     where
-        F: FnOnce(&T) -> T,
+        F: FnOnce(&mut T),
     {
-        let state = write(&self.inner.read());
-        *self.inner.write() = state;
+        write(&mut self.inner.write());
     }
 
     pub(crate) fn new(inner: GenerationalBox<T>) -> Self {
