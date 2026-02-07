@@ -2,7 +2,12 @@ use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-use crate::{arena::{ArenaNode, NodeId}, component::NodeAttributes, context::Context, layout::LogicalRect};
+use crate::{
+    arena::{ArenaNode, NodeId},
+    component::NodeAttributes,
+    context::Context,
+    layout::LogicalRect,
+};
 
 /// A drawing surface scoped to a rectangular region of the terminal buffer.
 pub struct Canvas<'a> {
@@ -15,7 +20,12 @@ pub struct Canvas<'a> {
 
 impl<'a> Canvas<'a> {
     /// Creates a new canvas with the given region.
-    pub(crate) fn new(node: &'a ArenaNode, buf: &'a mut Buffer, context: &'a Context, current_node: NodeId) -> Self {
+    pub(crate) fn new(
+        node: &'a ArenaNode,
+        buf: &'a mut Buffer,
+        context: &'a Context,
+        current_node: NodeId,
+    ) -> Self {
         let rect = node.area();
         let attributes = node.attributes();
 

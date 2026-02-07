@@ -187,12 +187,15 @@ where
     for (i, measure) in measures.into_iter().enumerate() {
         match measure {
             Measure::Fixed(x, y, width, height) => {
-                fixed_rects.push((i, LogicalRect {
-                    x: area.x + x,
-                    y: area.y + y,
-                    width,
-                    height,
-                }));
+                fixed_rects.push((
+                    i,
+                    LogicalRect {
+                        x: area.x + x,
+                        y: area.y + y,
+                        width,
+                        height,
+                    },
+                ));
             }
             m => flow_measures.push((i, m)),
         }
@@ -257,7 +260,10 @@ where
                 Measure::Percent(p) => (viewport as f64 * p.max(0.0)).round() as i32,
                 Measure::Fixed(..) => unreachable!("fixed measures are handled in compute_split"),
             };
-            let v = Variable { start: *cursor, size };
+            let v = Variable {
+                start: *cursor,
+                size,
+            };
             *cursor += size;
             Some(v)
         })
