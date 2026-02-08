@@ -50,6 +50,7 @@ extern crate alloc;
 
 pub use crate::{
     canvas::Canvas,
+    component::{Ui, UiNode},
     context::EventContext,
     launch::{LaunchBuilder, launch},
 };
@@ -65,7 +66,7 @@ pub mod prelude {
             KeyCode, MediaKeyCode, ModifierKeyCode, ModifierKeyDirection, MouseButton,
             MouseScrollDirection,
         },
-        layout::{Flow, LogicalRect, Measure, Placement},
+        layout::{Flow, Inset, LogicalRect, Measure, Placement},
         state::State,
     };
     pub use vtui_macros::component;

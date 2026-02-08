@@ -3,7 +3,7 @@ use core::cell::RefCell;
 use crate::{
     canvas::Canvas,
     context::EventContext,
-    layout::{Flow, Measure, Placement},
+    layout::{Flow, Inset, Measure, Placement},
     listeners::Listeners,
     state::{State, StateStore},
     transport::Event,
@@ -51,6 +51,16 @@ impl Component {
     /// Sets the default [`Measure`] of this node.
     pub fn set_measure(&self, measure: Measure) {
         self.node.borrow_mut().attributes.measure = measure;
+    }
+
+    /// Sets the margin of this node.
+    pub fn set_margin(&self, margin: Inset) {
+        self.node.borrow_mut().attributes.margin = margin;
+    }
+
+    /// Sets the padding of this node.
+    pub fn set_padding(&self, padding: Inset) {
+        self.node.borrow_mut().attributes.padding = padding;
     }
 
     /// Defines a render function for this component.
@@ -160,6 +170,8 @@ pub struct NodeAttributes {
     pub placement: Placement,
     pub offset: (i32, i32),
     pub measure: Measure,
+    pub margin: Inset,
+    pub padding: Inset,
 }
 
 /// A builder for adding children to a component during composition.

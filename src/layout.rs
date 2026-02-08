@@ -113,6 +113,67 @@ impl LogicalRect {
     pub const fn bottom(self) -> i32 {
         self.y.saturating_add(self.height)
     }
+
+    /// Returns a new rectangle with the given inset applied.
+    ///
+    /// Negative insets expand the rectangle. Positive insets shrink it, with
+    /// x/y clamped to not exceed the original bounds when the rect collapses.
+    pub fn inset(self, inset: Inset) -> Self {
+        let left = inset.left();
+        let top = inset.top();
+        let right = inset.right();
+        let bottom = inset.bottom();
+
+        let w0 = self.width.max(0);
+        let h0 = self.height.max(0);
+
+        let dx = if left >= 0 { left.min(w0) } else { left };
+        let dy = if top >= 0 { top.min(h0) } else { top };
+
+        let x = self.x.saturating_add(dx);
+        let y = self.y.saturating_add(dy);
+        let width = self.width.saturating_sub(left).saturating_sub(right).max(0);
+        let height = self
+            .height
+            .saturating_sub(top)
+            .saturating_sub(bottom)
+            .max(0);
+
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+}
+
+/// Spacing applied to a rectangle's edges for margin or padding.
+///
+/// Fields are ordered as `(top, right, bottom, left)`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Inset(i32, i32, i32, i32);
+
+impl Inset {
+    pub fn all(size: i32) -> Self {
+        Self(size, size, size, size)
+    }
+
+    pub fn top(self) -> i32 {
+        self.0
+    }
+
+    pub fn right(self) -> i32 {
+        self.1
+    }
+
+    pub fn bottom(self) -> i32 {
+        self.2
+    }
+
+    pub fn left(self) -> i32 {
+        self.3
+    }
 }
 
 /// A layout mode that changes how a parent node interprets [`Measure`].
