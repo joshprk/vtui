@@ -5,7 +5,7 @@ use crate::{
     canvas::Canvas,
     component::{Node, NodeAttributes},
     context::{Context, EventContext},
-    layout::{LogicalRect, compute_split},
+    layout::{LogicalRect, Measure, compute_split},
     transport::Event,
 };
 
@@ -86,6 +86,19 @@ impl Arena {
             .get_mut(id)
             .expect("set_offset received invalid id");
         node.node.attributes_mut().offset = (x, y);
+    }
+
+    /// Sets the measure of a node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the [`NodeId`] is invalid.
+    pub fn set_measure(&mut self, id: NodeId, measure: Measure) {
+        let node = self
+            .nodes
+            .get_mut(id)
+            .expect("set_measure received invalid id");
+        node.node.attributes_mut().measure = measure;
     }
 }
 

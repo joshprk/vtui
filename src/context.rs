@@ -4,13 +4,14 @@ use crate::{
     arena::{Arena, NodeId},
     component::NodeAttributes,
     events::FocusChanged,
-    layout::LogicalRect,
+    layout::{LogicalRect, Measure},
     transport::{Event, MessageSender, MouseEvent},
 };
 
 pub enum Command {
     Shutdown,
     SetOffset(NodeId, i32, i32),
+    SetMeasure(NodeId, Measure),
     SetFocus(NodeId),
     ResignFocus(NodeId),
     Tick,
@@ -21,6 +22,7 @@ impl Command {
         match self {
             Self::Shutdown => ctx.shutdown_requested = true,
             Self::SetOffset(id, x, y) => arena.set_offset(id, x, y),
+            Self::SetMeasure(id, measure) => arena.set_measure(id, measure),
             Self::SetFocus(id) => {
                 if let Some(node) = arena.get(id)
                     && node.attributes().focusable
