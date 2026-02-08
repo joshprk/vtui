@@ -45,12 +45,7 @@ impl Canvas<'_> {
         self.buf
     }
 
-    /// Returns the underlying rectangular region.
-    pub fn rect(&self) -> LogicalRect {
-        self.rect
-    }
-
-    /// Returns a [`LogicalRect`] with the same width and height, but with an origin of `(0, 0)`.
+    /// Returns the relative rectangular region of this canvas.
     pub fn area(&self) -> LogicalRect {
         LogicalRect::new(0, 0, self.rect.width, self.rect.height)
     }
