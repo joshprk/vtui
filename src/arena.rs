@@ -128,7 +128,13 @@ fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport
     let mut stack = vec![(root, viewport)];
 
     while let Some((id, rect)) = stack.pop() {
-        nodes[id].rect = rect;
+        let margin = nodes[id].node.attributes().margin;
+        let padding = nodes[id].node.attributes().padding;
+
+        let content_rect = rect.inset(margin);
+        nodes[id].rect = content_rect;
+
+        let child_viewport = content_rect.inset(padding);
 
         let node = &nodes[id].node;
         let children = &nodes[id].children;
@@ -140,7 +146,7 @@ fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport
             child_node.attributes().measure
         });
 
-        let splits = compute_split(flow, placement, rect, measures);
+        let splits = compute_split(flow, placement, child_viewport, measures);
 
         for (id, rect) in children.iter().zip(splits).rev() {
             stack.push((*id, rect));
