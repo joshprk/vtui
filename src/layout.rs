@@ -115,6 +115,15 @@ impl LogicalRect {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Inset(i32, i32, i32, i32);
+
+impl Inset {
+    pub fn all(size: i32) -> Self {
+        Self(size, size, size, size)
+    }
+}
+
 /// A layout mode that changes how a parent node interprets [`Measure`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Placement {
