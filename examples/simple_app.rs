@@ -9,9 +9,9 @@ fn App(c: Component) -> Node {
         }
     });
 
-    c.compose(|node| {
-        node.child(Counter, ());
-        node.child(Counter, ());
+    c.compose(|ui| {
+        ui.child(Counter, ()).measure(Measure::Percent(0.5));
+        ui.child(Counter, ()).measure(Measure::Percent(0.5));
     })
 }
 
@@ -20,8 +20,7 @@ fn Counter(c: Component) -> Node {
     let mut clicks = c.state(0);
 
     c.draw(move |canvas| {
-        let paragraph = Paragraph::new(format!("Clicks: {}", clicks.read()))
-            .centered();
+        let paragraph = Paragraph::new(format!("Clicks: {}", clicks.read())).centered();
 
         canvas.widget(canvas.area(), paragraph);
     });

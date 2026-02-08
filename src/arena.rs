@@ -134,12 +134,10 @@ fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport
         let flow = node.flow();
         let placement = node.attributes().placement;
 
-        let measures = children
-            .iter()
-            .map(|&child_id| {
-                let child_node = &nodes[child_id].node;
-                child_node.attributes().measure
-            });
+        let measures = children.iter().map(|&child_id| {
+            let child_node = &nodes[child_id].node;
+            child_node.attributes().measure
+        });
 
         let splits = compute_split(flow, placement, rect, measures);
 
@@ -171,12 +169,7 @@ fn compute_traversal(nodes: &SlotMap<NodeId, ArenaNode>, root: NodeId) -> Vec<No
 fn remount_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
     remove_subtree(nodes, root_id);
 
-    let children = nodes[root_id]
-        .node
-        .children()
-        .iter()
-        .map(|child_fn| child_fn())
-        .collect::<Vec<_>>();
+    let children = nodes[root_id].node.compose();
 
     for child in children {
         let child_id = nodes.insert(child.into());

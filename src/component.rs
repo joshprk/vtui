@@ -9,7 +9,6 @@ use crate::{
     transport::Event,
 };
 
-pub type BoxedChild = Box<dyn Fn() -> Node>;
 pub type BoxedRenderer = Box<dyn Fn(&mut Canvas)>;
 pub type Factory<P = ()> = fn(Component, P) -> Node;
 
@@ -81,10 +80,10 @@ impl Component {
     /// Builds the component into a [`Node`].
     pub fn compose<F>(self, builder: F) -> Node
     where
-        F: FnOnce(&mut Node),
+        F: Fn(&mut Ui) + 'static,
     {
         let mut node = Node::from(self);
-        builder(&mut node);
+        node.ui = Box::new(builder);
         node
     }
 
@@ -100,7 +99,7 @@ pub struct Node {
     state: StateStore,
     draw_fn: Option<BoxedRenderer>,
     listeners: Listeners,
-    children: Vec<BoxedChild>,
+    ui: Box<dyn Fn(&mut Ui)>,
 }
 
 impl From<Component> for Node {
@@ -110,11 +109,6 @@ impl From<Component> for Node {
 }
 
 impl Node {
-    pub fn child<P: Props>(&mut self, factory: Factory<P>, props: P) {
-        let child_fn = Box::new(move || factory(Component::new(), props.clone()));
-        self.children.push(child_fn);
-    }
-
     /// Creates a new node.
     pub(crate) fn new() -> Self {
         Self {
@@ -122,7 +116,7 @@ impl Node {
             state: StateStore::default(),
             draw_fn: Option::default(),
             listeners: Listeners::default(),
-            children: Vec::default(),
+            ui: Box::new(|_| {}),
         }
     }
 
@@ -135,9 +129,10 @@ impl Node {
         &mut self.attributes
     }
 
-    /// Returns functions for mounting this node's children.
-    pub(crate) fn children(&self) -> &Vec<BoxedChild> {
-        &self.children
+    pub(crate) fn compose(&self) -> Vec<Node> {
+        let mut ui = Ui::default();
+        (self.ui)(&mut ui);
+        ui.0
     }
 
     /// Returns the flow of this node.
@@ -165,4 +160,27 @@ pub struct NodeAttributes {
     pub placement: Placement,
     pub offset: (i32, i32),
     pub measure: Measure,
+}
+
+/// A builder for adding children to a component during composition.
+///
+/// Passed to the closure in [`Component::compose`] to construct the component's subtree.
+#[derive(Default)]
+pub struct Ui(Vec<Node>);
+
+impl Ui {
+    /// Adds a new child to this node.
+    pub fn child<P: Props>(&mut self, factory: Factory<P>, props: P) -> UiNode<'_> {
+        self.0.push(factory(Component::new(), props));
+        UiNode(self, self.0.len() - 1)
+    }
+}
+
+pub struct UiNode<'ui>(&'ui mut Ui, usize);
+
+impl UiNode<'_> {
+    /// Sets the [`Measure`] of this node.
+    pub fn measure(&mut self, measure: Measure) {
+        (self.0).0.get_mut(self.1).unwrap().attributes_mut().measure = measure;
+    }
 }
