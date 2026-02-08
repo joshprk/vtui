@@ -105,7 +105,6 @@ new_key_type! { pub struct NodeId; }
 pub struct ArenaNode {
     node: Node,
     rect: LogicalRect,
-    offset: (i32, i32),
     children: Vec<NodeId>,
 }
 
@@ -114,7 +113,6 @@ impl From<Node> for ArenaNode {
         Self {
             node,
             rect: LogicalRect::zeroed(),
-            offset: (0, 0),
             children: Vec::new(),
         }
     }
@@ -123,10 +121,6 @@ impl From<Node> for ArenaNode {
 impl ArenaNode {
     pub fn area(&self) -> LogicalRect {
         self.rect
-    }
-
-    pub fn offset(&self) -> (i32, i32) {
-        self.offset
     }
 
     pub fn attributes(&self) -> &NodeAttributes {
@@ -148,13 +142,9 @@ fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport
     while let Some((id, rect, offset_acc)) = stack.pop() {
         let margin = nodes[id].node.attributes().margin;
         let padding = nodes[id].node.attributes().padding;
-        let offset = nodes[id].node.attributes().offset;
 
         let content_rect = rect.inset(margin);
-        nodes[id].rect = content_rect;
-
-        let offset_acc = (offset_acc.0 + offset.0, offset_acc.1 + offset.1);
-        nodes[id].offset = offset_acc;
+        nodes[id].rect = content_rect.with_offset(offset_acc.0, offset_acc.1);
 
         let child_viewport = content_rect.inset(padding);
 
