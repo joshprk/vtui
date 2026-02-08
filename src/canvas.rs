@@ -21,10 +21,10 @@ pub struct Canvas<'a> {
 impl<'a> Canvas<'a> {
     /// Creates a new canvas with the given region.
     pub(crate) fn new(
-        node: &'a ArenaNode,
         buf: &'a mut Buffer,
         context: &'a Context,
         current_node: NodeId,
+        node: &'a ArenaNode,
     ) -> Self {
         let rect = node.area();
         let attributes = node.attributes();

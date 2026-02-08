@@ -1,7 +1,7 @@
 use core::ops::Deref;
 
 use crate::{
-    arena::{Arena, NodeId},
+    arena::{Arena, ArenaNode, NodeId},
     component::NodeAttributes,
     events::FocusChanged,
     layout::{LogicalRect, Measure},
@@ -127,9 +127,11 @@ impl<'d, E: Event> EventContext<'d, E> {
         event: &'d E,
         context: &'d mut Context,
         current_node: NodeId,
-        rect: LogicalRect,
-        attributes: NodeAttributes,
+        node: &ArenaNode,
     ) -> Self {
+        let rect = node.area();
+        let attributes = *node.attributes();
+
         Self {
             event,
             context,

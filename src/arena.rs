@@ -42,7 +42,7 @@ impl Arena {
 
         for &id in self.traversal.iter() {
             let node = &self.nodes[id];
-            let mut canvas = Canvas::new(node, buf, context, id);
+            let mut canvas = Canvas::new(buf, context, id, node);
 
             node.render(&mut canvas);
         }
@@ -55,9 +55,7 @@ impl Arena {
 
         for &id in self.traversal.iter().rev() {
             let node = &mut self.nodes[id];
-            let rect = node.rect;
-            let attributes = node.attributes();
-            let mut ctx = EventContext::new(event, context, id, rect, *attributes);
+            let mut ctx = EventContext::new(event, context, id, node);
             node.node.listeners_mut().dispatch(&mut ctx);
         }
     }
