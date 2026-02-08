@@ -1,4 +1,4 @@
-//! vtui is the framework for sophisticated full-stack terminal applications.
+//! vtui is a framework for modern terminal applications.
 //!
 //! # High-level features
 //!

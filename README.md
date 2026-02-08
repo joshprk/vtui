@@ -15,7 +15,7 @@
 
 ## About
 
-vtui is the framework for sophisticated full-stack terminal applications.
+vtui is a framework for modern terminal applications.
 
 It provides basic building blocks that often come up as boilerplate, from a high-performance runtime
 to complex UI features like scrolling.
