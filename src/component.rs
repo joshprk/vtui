@@ -176,11 +176,15 @@ impl Ui {
     }
 }
 
+/// A handle for configuring a child node's properties.
+///
+/// Returned by [`Ui::child`] to allow the parent to override certain attributes.
 pub struct UiNode<'ui>(&'ui mut Ui, usize);
 
 impl UiNode<'_> {
     /// Sets the [`Measure`] of this node.
-    pub fn measure(&mut self, measure: Measure) {
+    pub fn measure(&mut self, measure: Measure) -> &mut Self {
         (self.0).0.get_mut(self.1).unwrap().attributes_mut().measure = measure;
+        self
     }
 }
