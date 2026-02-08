@@ -2,6 +2,7 @@ use core::ops::Deref;
 
 use crate::{
     arena::{Arena, NodeId},
+    component::NodeAttributes,
     events::FocusChanged,
     layout::LogicalRect,
     transport::{Event, MessageSender, MouseEvent},
@@ -107,6 +108,7 @@ pub struct EventContext<'d, E: Event> {
     context: &'d mut Context,
     current_node: NodeId,
     rect: LogicalRect,
+    attributes: NodeAttributes,
 }
 
 impl<E: Event> Deref for EventContext<'_, E> {
@@ -124,12 +126,14 @@ impl<'d, E: Event> EventContext<'d, E> {
         context: &'d mut Context,
         current_node: NodeId,
         rect: LogicalRect,
+        attributes: NodeAttributes,
     ) -> Self {
         Self {
             event,
             context,
             current_node,
             rect,
+            attributes,
         }
     }
 }
@@ -184,6 +188,16 @@ impl<E: Event> EventContext<'_, E> {
     /// Determines if this component is focused.
     pub fn is_focused(&self) -> bool {
         self.context.focused == Some(self.current_node)
+    }
+
+    /// Returns the relative rectangular region of this component.
+    pub fn area(&self) -> LogicalRect {
+        LogicalRect::origin(self.rect.width, self.rect.height)
+    }
+
+    /// Returns the current offset of this component.
+    pub fn offset(&self) -> (i32, i32) {
+        self.attributes.offset
     }
 }
 

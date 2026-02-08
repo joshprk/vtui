@@ -47,7 +47,7 @@ impl Canvas<'_> {
 
     /// Returns the relative rectangular region of this canvas.
     pub fn area(&self) -> LogicalRect {
-        LogicalRect::new(0, 0, self.rect.width, self.rect.height)
+        LogicalRect::origin(self.rect.width, self.rect.height)
     }
 
     /// Determines if this component is focused.

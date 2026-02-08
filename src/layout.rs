@@ -41,6 +41,16 @@ impl LogicalRect {
         }
     }
 
+    /// Returns a rectangle positioned at `(0, 0)`.
+    pub fn origin(width: i32, height: i32) -> Self {
+        Self {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        }
+    }
+
     /// Returns the intersection rectangle of this rectangle and another.
     pub fn intersection(self, other: Self) -> Self {
         if !self.intersects(other) {
