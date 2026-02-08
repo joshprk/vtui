@@ -39,7 +39,7 @@ fn App(c: Component) -> Node {
 
     c.listen::<MouseDown>(move |event| {
         if event.button == MouseButton::Left {
-            *clicks.write() += 1;
+            clicks.set(|c| *c += 1);
         }
     });
 
