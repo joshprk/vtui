@@ -66,7 +66,7 @@ impl Canvas<'_> {
         self.set_stringn(x, y, text, usize::MAX, style);
     }
 
-    /// Draws a `ratatui` widget at the given region.
+    /// Draws a [ratatui] widget at the given region.
     ///
     /// This function is panic-free and text is automatically clipped.
     pub fn widget(&mut self, rect: impl Into<LogicalRect>, widget: impl Widget) {
