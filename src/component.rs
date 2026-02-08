@@ -196,7 +196,14 @@ pub struct UiNode<'ui>(&'ui mut Ui, usize);
 impl UiNode<'_> {
     /// Sets the [`Measure`] of this node.
     pub fn measure(&mut self, measure: Measure) -> &mut Self {
-        (self.0).0.get_mut(self.1).unwrap().attributes_mut().measure = measure;
+        self.node_mut().attributes_mut().measure = measure;
         self
+    }
+
+    fn node_mut(&mut self) -> &mut Node {
+        (self.0)
+            .0
+            .get_mut(self.1)
+            .expect("attempted to index an invalid UiNode")
     }
 }

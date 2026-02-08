@@ -10,6 +10,9 @@ use crate::{
 };
 
 /// A drawing surface scoped to a rectangular region of the terminal buffer.
+///
+/// `Canvas` cannot be constructed directly. It is given to renderers via
+/// [Component::draw](crate::component::Component).
 pub struct Canvas<'a> {
     buf: &'a mut Buffer,
     context: &'a Context,
