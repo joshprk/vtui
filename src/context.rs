@@ -3,6 +3,7 @@ use core::ops::Deref;
 use crate::{
     arena::{Arena, NodeId},
     events::FocusChanged,
+    layout::LogicalRect,
     transport::{Event, MessageSender, MouseEvent},
 };
 
@@ -105,6 +106,7 @@ pub struct EventContext<'d, E: Event> {
     event: &'d E,
     context: &'d mut Context,
     current_node: NodeId,
+    rect: LogicalRect,
 }
 
 impl<E: Event> Deref for EventContext<'_, E> {
@@ -117,11 +119,17 @@ impl<E: Event> Deref for EventContext<'_, E> {
 
 impl<'d, E: Event> EventContext<'d, E> {
     /// Creates a new event context.
-    pub(crate) fn new(event: &'d E, context: &'d mut Context, current_node: NodeId) -> Self {
+    pub(crate) fn new(
+        event: &'d E,
+        context: &'d mut Context,
+        current_node: NodeId,
+        rect: LogicalRect,
+    ) -> Self {
         Self {
             event,
             context,
             current_node,
+            rect,
         }
     }
 }
@@ -185,5 +193,13 @@ impl<E: MouseEvent> EventContext<'_, E> {
     /// A mouse hit is assigned to only one upper-most component containing the cursor.
     pub fn is_mouse_hit(&self) -> bool {
         self.context.target == Some(self.current_node)
+    }
+
+    /// Returns the relative mouse coordinates where this mouse event took place.
+    pub fn mouse_coords(&self) -> Option<(i32, i32)> {
+        let (abs_x, abs_y) = self.event.coords();
+        let x = abs_x as i32 - self.rect.x;
+        let y = abs_y as i32 - self.rect.y;
+        Some((x, y))
     }
 }
