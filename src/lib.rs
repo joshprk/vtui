@@ -14,7 +14,7 @@
 //! use vtui::{events::*, prelude::*};
 //!
 //! #[component]
-//! fn App(c: Component) {
+//! fn App(c: Component) -> Node {
 //!     c.draw(|canvas| {
 //!         canvas.text(0, 0, "Hello world!", Style::default());
 //!     });
@@ -24,6 +24,8 @@
 //!             event.request_shutdown();
 //!         }
 //!     });
+//!
+//!     c.compose(|_| {})
 //! }
 //!
 //! fn main() {
