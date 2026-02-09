@@ -159,28 +159,53 @@ impl LogicalRect {
 }
 
 /// Spacing applied to a rectangle's edges for margin or padding.
-///
-/// Fields are ordered as `(top, right, bottom, left)`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Inset(i32, i32, i32, i32);
 
 impl Inset {
+    /// Creates a new inset with explicit values for each edge.
+    pub fn new(top: i32, right: i32, bottom: i32, left: i32) -> Self {
+        Self(top, right, bottom, left)
+    }
+
+    /// Creates a new inset with the same value applied to all edges.
     pub fn all(size: i32) -> Self {
         Self(size, size, size, size)
     }
 
+    /// Creates a new inset with symmetric horizontal and vertical values.
+    ///
+    /// `x` is applied to left and right edges, `y` to top and bottom.
+    pub fn symmetric(x: i32, y: i32) -> Self {
+        Self(y, x, y, x)
+    }
+
+    /// Creates a new inset affecting only the left and right edges.
+    pub fn horizontal(left: i32, right: i32) -> Self {
+        Self(0, right, 0, left)
+    }
+
+    /// Creates a new inset affecting only the top and bottom edges.
+    pub fn vertical(top: i32, bottom: i32) -> Self {
+        Self(top, 0, bottom, 0)
+    }
+
+    /// Returns the top edge value.
     pub fn top(self) -> i32 {
         self.0
     }
 
+    /// Returns the right edge value.
     pub fn right(self) -> i32 {
         self.1
     }
 
+    /// Returns the bottom edge value.
     pub fn bottom(self) -> i32 {
         self.2
     }
 
+    /// Returns the left edge value.
     pub fn left(self) -> i32 {
         self.3
     }
