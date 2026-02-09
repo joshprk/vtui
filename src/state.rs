@@ -1,4 +1,8 @@
-use core::cell::{Ref, RefMut};
+use alloc::rc::Rc;
+use core::{
+    any::{Any, TypeId},
+    cell::{Ref, RefMut},
+};
 
 use generational_box::{
     GenerationalBox, GenerationalRef, GenerationalRefMut, Owner, UnsyncStorage,
@@ -59,5 +63,44 @@ impl<T> State<T> {
 
     pub(crate) fn new(inner: GenerationalBox<T>) -> Self {
         Self { inner }
+    }
+}
+
+/// Stores component-local state storage.
+#[derive(Clone, Default)]
+pub struct Scope {
+    values: Vec<Rc<dyn Any>>,
+    index: Vec<TypeId>,
+    parent: Option<Rc<Scope>>,
+}
+
+impl Scope {
+    pub fn child(self: &Rc<Self>) -> Scope {
+        Self {
+            values: Vec::new(),
+            index: Vec::new(),
+            parent: Some(Rc::clone(self)),
+        }
+    }
+
+    pub fn set<T: 'static>(&mut self, state: State<T>) {
+        let id = TypeId::of::<T>();
+
+        if let Some(idx) = self.index.iter().position(|&i| i == id) {
+            self.values[idx] = Rc::new(state);
+        } else {
+            self.index.push(id);
+            self.values.push(Rc::new(state));
+        }
+    }
+
+    pub fn get<T: 'static>(&self) -> Option<State<T>> {
+        let id = TypeId::of::<T>();
+
+        if let Some(idx) = self.index.iter().position(|&i| i == id) {
+            return self.values[idx].downcast_ref::<State<T>>().copied();
+        }
+
+        self.parent.as_ref().and_then(|p| p.get::<T>())
     }
 }
