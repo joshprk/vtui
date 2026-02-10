@@ -1,3 +1,4 @@
+use alloc::rc::Rc;
 use core::cell::RefCell;
 
 use crate::{
@@ -5,7 +6,7 @@ use crate::{
     context::EventContext,
     layout::{Flow, Inset, Measure, Placement},
     listeners::Listeners,
-    state::{State, StateStore},
+    state::{Scope, State, StateStore},
     transport::Event,
 };
 
@@ -87,18 +88,50 @@ impl Component {
         self.node.borrow_mut().state.insert(value)
     }
 
+    /// Gets or creates a scoped context value.
+    ///
+    /// If a value of type `T` exists in an ancestor's scope, returns that handle.
+    /// Otherwise, creates a new value using `T::default()` and provides it to descendants.
+    pub fn context<T: Default + 'static>(&self) -> State<T> {
+        if let Some(state) = self.node.borrow().scope.get::<T>() {
+            state
+        } else {
+            self.set_context(T::default())
+        }
+    }
+
+    /// Gets a scoped context value.
+    ///
+    /// Returns `None` if no ancestor has provided a value of type `T`.
+    pub fn get_context<T: 'static>(&self) -> Option<State<T>> {
+        self.node.borrow().scope.get::<T>()
+    }
+
+    /// Provides a scoped context value to descendants.
+    ///
+    /// The value is wrapped in [`State`] and made available to all descendant components.
+    pub fn set_context<T: 'static>(&self, value: T) -> State<T> {
+        let state = self.state(value);
+        self.node.borrow_mut().scope.set::<T>(state);
+        state
+    }
+
     /// Builds the component into a [`Node`].
     pub fn compose<F>(self, builder: F) -> Node
     where
         F: Fn(&mut Ui) + 'static,
     {
-        let mut node = Node::from(self);
+        let mut node = self.node.into_inner();
         node.ui = Box::new(builder);
         node
     }
 
     pub(crate) fn new() -> Self {
-        let node = RefCell::new(Node::new());
+        Self::with_scope(Rc::new(Scope::default()))
+    }
+
+    pub(crate) fn with_scope(parent_scope: Rc<Scope>) -> Self {
+        let node = RefCell::new(Node::with_parent_scope(parent_scope));
         Self { node }
     }
 }
@@ -107,26 +140,28 @@ impl Component {
 pub struct Node {
     attributes: NodeAttributes,
     state: StateStore,
+    scope: Scope,
     draw_fn: Option<BoxedRenderer>,
     listeners: Listeners,
     ui: Box<dyn Fn(&mut Ui)>,
 }
 
-impl From<Component> for Node {
-    fn from(component: Component) -> Self {
-        component.node.into_inner()
-    }
-}
-
 impl Node {
-    /// Creates a new node.
-    pub(crate) fn new() -> Self {
+    fn new() -> Self {
         Self {
             attributes: NodeAttributes::default(),
             state: StateStore::default(),
+            scope: Scope::default(),
             draw_fn: Option::default(),
             listeners: Listeners::default(),
             ui: Box::new(|_| {}),
+        }
+    }
+
+    fn with_parent_scope(parent_scope: Rc<Scope>) -> Self {
+        Self {
+            scope: parent_scope.child(),
+            ..Self::new()
         }
     }
 
@@ -140,9 +175,10 @@ impl Node {
     }
 
     pub(crate) fn compose(&self) -> Vec<Node> {
-        let mut ui = Ui::default();
+        let scope = Rc::new(self.scope.clone());
+        let mut ui = Ui::with_scope(scope);
         (self.ui)(&mut ui);
-        ui.0
+        ui.children
     }
 
     /// Returns the flow of this node.
@@ -177,14 +213,24 @@ pub struct NodeAttributes {
 /// A builder for adding children to a component during composition.
 ///
 /// Passed to the closure in [`Component::compose`] to construct the component's subtree.
-#[derive(Default)]
-pub struct Ui(Vec<Node>);
+pub struct Ui {
+    children: Vec<Node>,
+    scope: Rc<Scope>,
+}
 
 impl Ui {
+    pub(crate) fn with_scope(scope: Rc<Scope>) -> Self {
+        Self {
+            children: Vec::new(),
+            scope,
+        }
+    }
+
     /// Adds a new child to this node.
     pub fn child<P: Props>(&mut self, factory: Factory<P>, props: P) -> UiNode<'_> {
-        self.0.push(factory(Component::new(), props));
-        UiNode(self, self.0.len() - 1)
+        let component = Component::with_scope(Rc::clone(&self.scope));
+        self.children.push(factory(component, props));
+        UiNode(self, self.children.len() - 1)
     }
 }
 
@@ -201,8 +247,8 @@ impl UiNode<'_> {
     }
 
     fn node_mut(&mut self) -> &mut Node {
-        (self.0)
-            .0
+        self.0
+            .children
             .get_mut(self.1)
             .expect("attempted to index an invalid UiNode")
     }
