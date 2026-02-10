@@ -48,6 +48,12 @@
 //! listening component. vtui offers batteries-included systems such as a focus system to help the
 //! developer route events to components.
 
+#[cfg(not(feature = "crossterm"))]
+compile_error!("vtui requires a driver: enable 'crossterm' feature");
+
+#[cfg(not(feature = "smol"))]
+compile_error!("vtui requires an executor: enable 'smol' feature");
+
 extern crate alloc;
 
 pub use crate::{
