@@ -4,8 +4,6 @@ use generational_box::{
     GenerationalBox, GenerationalRef, GenerationalRefMut, Owner, UnsyncStorage,
 };
 
-use crate::errors::StateError;
-
 #[derive(Default)]
 pub struct StateStore {
     inner: Owner<UnsyncStorage>,
@@ -35,56 +33,28 @@ impl<T> Clone for State<T> {
 impl<T> Copy for State<T> {}
 
 impl<T> State<T> {
-    /// Attempts to return a reference to the value, returning an error if it is freed.
-    pub fn try_read(&self) -> Result<GenerationalRef<Ref<'_, T>>, StateError> {
-        self.inner.try_read().map_err(StateError::from)
-    }
-
-    /// Attempts to return a mutable reference to the value, returning an error if it is freed.
-    pub fn try_write(&self) -> Result<GenerationalRefMut<RefMut<'_, T>>, StateError> {
-        self.inner.try_write().map_err(StateError::from)
-    }
-
-    /// Returns a reference to the value.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the component which this state was created from is freed.
-    ///
-    /// This should never happen if state is not self-referential (i.e. `State<State<T>>`).
+    /// Returns a reference to the inner value.
     pub fn read(&self) -> GenerationalRef<Ref<'_, T>> {
-        self.try_read().expect("attempted to read state after free")
+        self.inner.read()
     }
 
-    /// Directly mutates the value.
+    /// Directly mutates the inner value.
     ///
     /// It is recommended to use [`State::set`] instead if you do not have a reason for using this
     /// function.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the component which this state was created from is freed.
-    ///
-    /// This should never happen if state is not self-referential (i.e. `State<State<T>>`).
     pub fn write(&mut self) -> GenerationalRefMut<RefMut<'_, T>> {
-        self.try_write().expect("attempted to read state after free")
+        self.inner.write()
     }
 
-    /// Enqueues a mutation of the value.
+    /// Enqueues a mutation of the inner value.
     ///
     /// Currently, this immediately mutates the state. Future releases may introduce batching
     /// behavior between siblings to prevent race conditions.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the component which this state was created from is freed.
-    ///
-    /// This should never happen if state is not self-referential (i.e. `State<State<T>>`).
     pub fn set<F>(&mut self, write: F)
     where
         F: FnOnce(&mut T),
     {
-        write(&mut self.write());
+        write(&mut self.inner.write());
     }
 
     pub(crate) fn new(inner: GenerationalBox<T>) -> Self {
