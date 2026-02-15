@@ -15,10 +15,13 @@ impl From<Node> for Arena {
         let mut nodes = SlotMap::default();
         let root = nodes.insert(node);
 
-        Self {
+        let mut arena = Self {
             root,
             nodes,
-        }
+        };
+
+        arena.remount(root);
+        arena
     }
 }
 
