@@ -41,7 +41,9 @@ impl Arena {
             let cid = if let Some(i) = pos {
                 old.swap_remove(i)
             } else {
-                self.nodes.insert(d.build())
+                let mut node = d.build();
+                node.identity = want;
+                self.nodes.insert(node)
             };
 
             next.push(cid);

@@ -116,7 +116,7 @@ impl Identity {
     #[track_caller]
     pub fn keyed(key: u32) -> Self {
         Self {
-            key: None,
+            key: Some(key),
             location: Location::caller(),
         }
     }
