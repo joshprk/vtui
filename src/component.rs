@@ -1,4 +1,4 @@
-use core::{any::Any, cell::RefCell, panic::Location};
+use core::{any::Any, cell::RefCell, panic::Location, hash::Hash};
 
 use crate::arena::Node;
 
@@ -98,7 +98,7 @@ impl Descriptor {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Identity {
     key: Option<u32>,
     location: &'static Location<'static>,

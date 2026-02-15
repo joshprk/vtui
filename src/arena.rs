@@ -1,3 +1,4 @@
+use rustc_hash::FxHashSet;
 use slotmap::{SlotMap, new_key_type};
 
 use crate::component::{Identity, Ui};
@@ -31,7 +32,11 @@ impl Arena {
         let mut old = core::mem::take(&mut self.nodes[id].children);
         let mut next = Vec::with_capacity(new.len());
 
+        let mut seen = FxHashSet::default();
+
         for d in new {
+            assert!(seen.insert(d.identity()), "duplicate identity");
+
             let want = d.identity();
             let pos = old.iter().position(|&cid| {
                 let have = self.nodes[cid].identity;
