@@ -11,7 +11,7 @@ impl Parse for ComponentFn {
         let mut func = input.parse::<syn::ItemFn>()?;
 
         if func.sig.inputs.len() == 1 {
-            func.sig.inputs.push(syn::parse_quote!(__props: ()));
+            func.sig.inputs.push(syn::parse_quote!(_: &()));
         }
 
         let props_type = match func.sig.inputs.iter().nth(1).unwrap() {

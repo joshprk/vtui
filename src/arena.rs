@@ -1,208 +1,92 @@
-use ratatui::Frame;
 use slotmap::{SlotMap, new_key_type};
 
-use crate::{
-    canvas::Canvas,
-    component::{Node, NodeAttributes},
-    context::{Context, EventContext},
-    layout::{LogicalRect, Measure, compute_split},
-    transport::Event,
-};
+use crate::component::{Identity, Ui};
 
-/// Stores UI nodes in memory and dispatches requests to them.
+new_key_type! { pub struct NodeId; }
+
 pub struct Arena {
     root: NodeId,
-    nodes: SlotMap<NodeId, ArenaNode>,
-    traversal: Vec<NodeId>,
+    nodes: SlotMap<NodeId, Node>,
 }
 
 impl From<Node> for Arena {
-    fn from(root: Node) -> Self {
+    fn from(node: Node) -> Self {
         let mut nodes = SlotMap::default();
-        let root = nodes.insert(root.into());
-
-        remount_subtree(&mut nodes, root);
-
-        let traversal = compute_traversal(&nodes, root);
+        let root = nodes.insert(node);
 
         Self {
             root,
             nodes,
-            traversal,
         }
     }
 }
 
 impl Arena {
-    /// Draws the node tree on the given frame.
-    pub fn render(&mut self, frame: &mut Frame, context: &Context) {
-        compute_layout(&mut self.nodes, self.root, frame.area().into());
+    fn reconcile(&mut self, id: NodeId) {
+        let node = &self.nodes[id];
+        let mut ui = Ui::default();
+        (node.composer)(&mut ui);
 
-        let buf = frame.buffer_mut();
+        let new = ui.descriptors();
+        let mut old = core::mem::take(&mut self.nodes[id].children);
+        let mut next = Vec::with_capacity(new.len());
 
-        for &id in self.traversal.iter() {
-            let node = &self.nodes[id];
-            let mut canvas = Canvas::new(buf, context, id, node);
+        for d in new {
+            let want = d.identity();
+            let pos = old.iter().position(|&cid| {
+                let have = self.nodes[cid].identity;
+                have == want
+            });
 
-            node.render(&mut canvas);
+            let cid = if let Some(i) = pos {
+                old.swap_remove(i)
+            } else {
+                self.nodes.insert(d.build())
+            };
+
+            next.push(cid);
+        }
+
+        for cid in old {
+            self.unmount(cid);
+        }
+
+        self.nodes[id].children = next;
+    }
+
+    fn remount(&mut self, root: NodeId) {
+        let mut stack = vec![root];
+
+        while let Some(id) = stack.pop() {
+            let mut children = self.nodes[id].children.clone();
+            self.reconcile(id);
+            stack.append(&mut children);
         }
     }
 
-    /// Broadcasts an event to the node tree.
-    pub fn update<E: Event>(&mut self, event: &E, context: &mut Context) {
-        let target = event.target(self);
-        context.set_target(target);
-
-        for &id in self.traversal.iter().rev() {
-            let node = &mut self.nodes[id];
-            let mut ctx = EventContext::new(event, context, id, node);
-            node.node.listeners_mut().dispatch(&mut ctx);
+    fn unmount(&mut self, id: NodeId) {
+        for cid in core::mem::take(&mut self.nodes[id].children) {
+            self.unmount(cid);
         }
-    }
 
-    /// Returns a reference to a node.
-    pub fn get(&self, id: NodeId) -> Option<&ArenaNode> {
-        self.nodes.get(id)
-    }
-
-    /// Returns an iterator in the forward traversal order.
-    pub fn traverse(&self) -> impl DoubleEndedIterator<Item = (NodeId, &ArenaNode)> {
-        self.traversal.iter().map(|&id| {
-            let node = self.nodes.get(id).expect("traversal order has invalid id");
-            (id, node)
-        })
-    }
-
-    /// Sets the render offset of a node.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the [`NodeId`] is invalid.
-    pub fn set_offset(&mut self, id: NodeId, x: i32, y: i32) {
-        let node = self
-            .nodes
-            .get_mut(id)
-            .expect("set_offset received invalid id");
-        node.node.attributes_mut().offset = (x, y);
-    }
-
-    /// Sets the measure of a node.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the [`NodeId`] is invalid.
-    pub fn set_measure(&mut self, id: NodeId, measure: Measure) {
-        let node = self
-            .nodes
-            .get_mut(id)
-            .expect("set_measure received invalid id");
-        node.node.attributes_mut().measure = measure;
+        self.nodes.remove(id);
     }
 }
 
-new_key_type! { pub struct NodeId; }
+pub struct Node {
+    pub(crate) composer: Box<dyn Fn(&mut Ui)>,
 
-pub struct ArenaNode {
-    node: Node,
-    rect: LogicalRect,
+    identity: Identity,
     children: Vec<NodeId>,
 }
 
-impl From<Node> for ArenaNode {
-    fn from(node: Node) -> Self {
+impl Default for Node {
+    #[track_caller]
+    fn default() -> Self {
         Self {
-            node,
-            rect: LogicalRect::zeroed(),
+            composer: Box::new(|_| {}),
+            identity: Identity::unkeyed(),
             children: Vec::new(),
         }
-    }
-}
-
-impl ArenaNode {
-    pub fn area(&self) -> LogicalRect {
-        self.rect
-    }
-
-    pub fn attributes(&self) -> &NodeAttributes {
-        self.node.attributes()
-    }
-
-    /// Renders the component into the frame buffer.
-    fn render(&self, canvas: &mut Canvas) {
-        if let Some(renderer) = &self.node.renderer() {
-            renderer(canvas);
-        }
-    }
-}
-
-/// Assigns areas to nodes given their layout.
-fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport: LogicalRect) {
-    let mut stack = vec![(root, viewport, (0i32, 0i32))];
-
-    while let Some((id, rect, offset_acc)) = stack.pop() {
-        let margin = nodes[id].node.attributes().margin;
-        let padding = nodes[id].node.attributes().padding;
-
-        let content_rect = rect.inset(margin);
-        nodes[id].rect = content_rect.with_offset(offset_acc.0, offset_acc.1);
-
-        let child_viewport = content_rect.inset(padding);
-
-        let node = &nodes[id].node;
-        let children = &nodes[id].children;
-        let flow = node.flow();
-        let placement = node.attributes().placement;
-
-        let measures = children.iter().map(|&child_id| {
-            let child_node = &nodes[child_id].node;
-            child_node.attributes().measure
-        });
-
-        let splits = compute_split(flow, placement, child_viewport, measures);
-
-        for (id, rect) in children.iter().zip(splits).rev() {
-            stack.push((*id, rect, offset_acc));
-        }
-    }
-}
-
-/// Computes a pre-order DFS traversal order for a node tree.
-fn compute_traversal(nodes: &SlotMap<NodeId, ArenaNode>, root: NodeId) -> Vec<NodeId> {
-    let mut order = Vec::with_capacity(nodes.len());
-    let mut stack = Vec::new();
-
-    stack.push(root);
-
-    while let Some(id) = stack.pop() {
-        order.push(id);
-
-        for &id in nodes[id].children.iter().rev() {
-            stack.push(id);
-        }
-    }
-
-    order
-}
-
-/// Destroys and recreates the children of the given [`Node`].
-fn remount_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
-    remove_subtree(nodes, root_id);
-
-    let children = nodes[root_id].node.compose();
-
-    for child in children {
-        let child_id = nodes.insert(child.into());
-        nodes[root_id].children.push(child_id);
-        remount_subtree(nodes, child_id);
-    }
-}
-
-/// Removes a node subtree recursively, leaving only its parent.
-fn remove_subtree(nodes: &mut SlotMap<NodeId, ArenaNode>, root_id: NodeId) {
-    let old = core::mem::take(&mut nodes[root_id].children);
-
-    for id in old {
-        remove_subtree(nodes, id);
-        nodes.remove(id);
     }
 }
