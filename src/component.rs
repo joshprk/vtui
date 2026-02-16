@@ -1,14 +1,15 @@
-use core::{any::Any, cell::RefCell, panic::Location, hash::Hash};
+use alloc::vec::IntoIter;
+use core::{any::Any, cell::RefCell, hash::Hash, panic::Location};
 
-use crate::arena::Node;
+use crate::{arena::Node, transport::Event};
 
-pub type Factory<P = ()> = fn(Component, &P) -> Node;
+pub type Factory<P = ()> = fn(Component, P) -> Node;
 
 pub trait Props: Clone + PartialEq + 'static {}
 
 impl Props for () {}
 
-trait AnyProps: Any {
+pub(crate) trait AnyProps: Any {
     fn eq(&self, other: &dyn AnyProps) -> bool;
 }
 
@@ -35,6 +36,10 @@ impl Component {
         self.node.get_mut().composer = composer;
         self.node.into_inner()
     }
+
+    pub fn listen<E: Event>(&self, callback: impl FnMut(&E) + 'static) {
+        self.node.borrow_mut().listeners.push(callback);
+    }
 }
 
 #[derive(Default)]
@@ -50,8 +55,8 @@ impl Ui {
         self.descriptors.last_mut().unwrap()
     }
 
-    pub(crate) fn descriptors(&self) -> &[Descriptor] {
-        &self.descriptors
+    pub(crate) fn into_descriptors(self) -> IntoIter<Descriptor> {
+        self.descriptors.into_iter()
     }
 }
 
@@ -76,25 +81,27 @@ impl Descriptor {
 
         let build = Box::new(move |props: &dyn AnyProps| {
             let props = (props as &dyn Any).downcast_ref::<P>().unwrap();
-            factory(Component::default(), props)
+            factory(Component::default(), props.clone())
         });
 
         let props = Box::new(props);
 
-        Self {
-            id,
-            build,
-            props,
-        }
+        Self { id, build, props }
     }
 
-    pub(crate) fn build(&self) -> Node {
-        let props = self.props.as_ref();
-        (self.build)(props)
+    pub(crate) fn build(self) -> Node {
+        let mut node = (self.build)(self.props.as_ref());
+        node.identity = self.identity();
+        node.props = self.props;
+        node
     }
 
     pub(crate) fn identity(&self) -> Identity {
         self.id
+    }
+
+    pub(crate) fn props(&self) -> &dyn AnyProps {
+        self.props.as_ref()
     }
 }
 

@@ -1,7 +1,10 @@
 use rustc_hash::FxHashSet;
 use slotmap::{SlotMap, new_key_type};
 
-use crate::component::{Identity, Ui};
+use crate::{
+    component::{AnyProps, Identity, Ui},
+    listeners::Listeners,
+};
 
 new_key_type! { pub struct NodeId; }
 
@@ -15,12 +18,8 @@ impl From<Node> for Arena {
         let mut nodes = SlotMap::default();
         let root = nodes.insert(node);
 
-        let mut arena = Self {
-            root,
-            nodes,
-        };
-
-        arena.remount(root);
+        let mut arena = Self { root, nodes };
+        arena.reconcile(root);
         arena
     }
 }
@@ -31,27 +30,28 @@ impl Arena {
         let mut ui = Ui::default();
         (node.composer)(&mut ui);
 
-        let new = ui.descriptors();
+        let new = ui.into_descriptors();
         let mut old = core::mem::take(&mut self.nodes[id].children);
         let mut next = Vec::with_capacity(new.len());
-
         let mut seen = FxHashSet::default();
 
         for d in new {
-            assert!(seen.insert(d.identity()), "duplicate identity");
+            let identity = d.identity();
 
-            let want = d.identity();
-            let pos = old.iter().position(|&cid| {
-                let have = self.nodes[cid].identity;
-                have == want
-            });
+            assert!(seen.insert(identity), "duplicate identity");
 
+            let pos = old
+                .iter()
+                .position(|&cid| self.nodes[cid].identity == identity);
             let cid = if let Some(i) = pos {
-                old.swap_remove(i)
+                let cid = old.swap_remove(i);
+                if !self.nodes[cid].props.eq(d.props()) {
+                    self.unmount_children(cid);
+                    self.nodes[cid] = d.build();
+                }
+                cid
             } else {
-                let mut node = d.build();
-                node.identity = want;
-                self.nodes.insert(node)
+                self.nodes.insert(d.build())
             };
 
             next.push(cid);
@@ -62,31 +62,30 @@ impl Arena {
         }
 
         self.nodes[id].children = next;
+
+        for &cid in &self.nodes[id].children.clone() {
+            self.reconcile(cid);
+        }
     }
 
-    fn remount(&mut self, root: NodeId) {
-        let mut stack = vec![root];
-
-        while let Some(id) = stack.pop() {
-            let mut children = self.nodes[id].children.clone();
-            self.reconcile(id);
-            stack.append(&mut children);
+    fn unmount_children(&mut self, id: NodeId) {
+        for cid in core::mem::take(&mut self.nodes[id].children) {
+            self.unmount(cid);
         }
     }
 
     fn unmount(&mut self, id: NodeId) {
-        for cid in core::mem::take(&mut self.nodes[id].children) {
-            self.unmount(cid);
-        }
-
+        self.unmount_children(id);
         self.nodes.remove(id);
     }
 }
 
 pub struct Node {
     pub(crate) composer: Box<dyn Fn(&mut Ui)>,
+    pub(crate) props: Box<dyn AnyProps>,
+    pub(crate) identity: Identity,
+    pub(crate) listeners: Listeners,
 
-    identity: Identity,
     children: Vec<NodeId>,
 }
 
@@ -95,7 +94,9 @@ impl Default for Node {
     fn default() -> Self {
         Self {
             composer: Box::new(|_| {}),
+            props: Box::new(()),
             identity: Identity::unkeyed(),
+            listeners: Listeners::default(),
             children: Vec::new(),
         }
     }
