@@ -1,7 +1,7 @@
 use alloc::vec::IntoIter;
 use core::{any::Any, cell::RefCell, hash::Hash, panic::Location};
 
-use crate::{arena::Node, transport::Event};
+use crate::{arena::Node, canvas::Canvas, handler::EventHandler, transport::Event};
 
 pub type Factory<P = ()> = fn(Component, P) -> Node;
 
@@ -37,7 +37,11 @@ impl Component {
         self.node.into_inner()
     }
 
-    pub fn listen<E: Event>(&self, callback: impl FnMut(&E) + 'static) {
+    pub fn draw(&self, renderer: impl Fn(&mut Canvas) + 'static) {
+        self.node.borrow_mut().renderer = Box::new(renderer);
+    }
+
+    pub fn listen<E: Event>(&self, callback: impl FnMut(&mut EventHandler<E>) + 'static) {
         self.node.borrow_mut().listeners.push(callback);
     }
 }
