@@ -4,6 +4,12 @@ use crate::{arena::Arena, context::Context};
 
 pub trait Event: Any + Send {}
 
+pub trait MouseEvent: Event {
+    fn coords(&self) -> (u16, u16);
+}
+
+impl<E: MouseEvent> Event for E {}
+
 pub struct Message {
     event: Box<dyn Event>,
     dispatch: fn(&mut Arena, Message, &mut Context),

@@ -38,4 +38,8 @@ impl Runtime {
     pub fn update(&mut self, msg: Message) {
         msg.dispatch(&mut self.arena, &mut self.context);
     }
+
+    pub fn should_exit(&self) -> bool {
+        self.context.shutdown_requested
+    }
 }

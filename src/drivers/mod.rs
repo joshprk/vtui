@@ -1,5 +1,9 @@
 use ratatui::{Terminal, prelude::Backend};
 
+pub use crate::drivers::crossterm::CrosstermDriver;
+
+mod crossterm;
+
 pub trait Driver {
     type Backend: Backend;
 
