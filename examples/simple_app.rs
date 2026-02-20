@@ -1,4 +1,6 @@
-use vtui::prelude::*;
+use std::time::Duration;
+
+use vtui::{LaunchBuilder, prelude::*};
 
 #[component]
 fn App(c: Component) -> Node {
@@ -20,4 +22,8 @@ fn Button(c: Component, p: ButtonProps) -> Node {
     c.compose(|_| {})
 }
 
-fn main() {}
+fn main() -> vtui::Result {
+    LaunchBuilder::new()
+        .frametime(Duration::from_millis(16))
+        .launch(App)
+}

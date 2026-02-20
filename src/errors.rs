@@ -7,3 +7,5 @@ pub enum RuntimeError {
     #[error(transparent)]
     Io(#[from] io::Error),
 }
+
+pub struct SendError;

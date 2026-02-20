@@ -1,6 +1,6 @@
 use core::{any::Any, time::Duration};
 
-use crate::{arena::Arena, context::Context};
+use crate::{arena::Arena, context::Context, errors::SendError};
 
 pub trait Event: Any + Send {}
 
@@ -37,13 +37,14 @@ impl Message {
 }
 
 pub struct MessageBus {
-    tx: flume::Sender<Message>,
+    tx: MessageSender,
     rx: flume::Receiver<Message>,
 }
 
 impl Default for MessageBus {
     fn default() -> Self {
         let (tx, rx) = flume::unbounded();
+        let tx = MessageSender { tx };
         Self { tx, rx }
     }
 }
@@ -53,7 +54,7 @@ impl MessageBus {
         Self::default()
     }
 
-    pub fn sender(&self) -> &flume::Sender<Message> {
+    pub fn sender(&self) -> &MessageSender {
         &self.tx
     }
 
@@ -63,5 +64,16 @@ impl MessageBus {
 
     pub fn recv_timeout(&self, timeout: Duration) -> Option<Message> {
         self.rx.recv_timeout(timeout).ok()
+    }
+}
+
+#[derive(Clone)]
+pub struct MessageSender {
+    tx: flume::Sender<Message>,
+}
+
+impl MessageSender {
+    pub fn send(&self, msg: Message) -> Result<(), SendError> {
+        self.tx.send(msg).map_err(|_| SendError)
     }
 }
