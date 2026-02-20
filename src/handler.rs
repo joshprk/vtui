@@ -1,6 +1,10 @@
 use std::ops::Deref;
 
-use crate::{arena::FrameData, context::Context, transport::Event};
+use crate::{
+    arena::FrameData,
+    context::{Command, Context},
+    transport::Event,
+};
 
 pub struct EventHandler<'a, E: Event> {
     event: &'a E,
@@ -9,6 +13,10 @@ pub struct EventHandler<'a, E: Event> {
 }
 
 impl<'a, E: Event> EventHandler<'a, E> {
+    pub fn request_shutdown(&mut self) {
+        self.context.enqueue(Command::Shutdown);
+    }
+
     pub(crate) fn new(event: &'a E, context: &'a mut Context, data: FrameData) -> Self {
         Self {
             event,

@@ -37,6 +37,7 @@ impl Runtime {
 
     pub fn update(&mut self, msg: Message) {
         msg.dispatch(&mut self.arena, &mut self.context);
+        self.context.commit();
     }
 
     pub fn should_exit(&self) -> bool {

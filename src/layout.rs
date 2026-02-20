@@ -15,4 +15,20 @@ impl LogicalRect {
             height: 0,
         }
     }
+
+    pub fn left(self) -> i32 {
+        self.x
+    }
+
+    pub fn right(self) -> i32 {
+        self.x + self.width
+    }
+
+    pub fn top(self) -> i32 {
+        self.y
+    }
+
+    pub fn bottom(self) -> i32 {
+        self.y + self.height
+    }
 }
