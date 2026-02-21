@@ -12,6 +12,7 @@ pub mod prelude {
     pub use crate::{
         arena::Node,
         component::{Component, Factory, Props},
+        layout::Region,
         state::Callback,
     };
 }

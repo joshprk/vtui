@@ -1,12 +1,25 @@
+use std::fmt::Debug;
+
+use ratatui::layout::Rect;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct LogicalRect {
+pub struct Region {
     pub x: i32,
     pub y: i32,
     pub width: i32,
     pub height: i32,
 }
 
-impl LogicalRect {
+impl Region {
+    pub fn new(x: i32, y: i32, width: i32, height: i32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
     pub fn zeroed() -> Self {
         Self {
             x: 0,
@@ -30,5 +43,16 @@ impl LogicalRect {
 
     pub fn bottom(self) -> i32 {
         self.y + self.height
+    }
+}
+
+impl From<Rect> for Region {
+    fn from(rect: Rect) -> Self {
+        Self {
+            x: rect.x as i32,
+            y: rect.y as i32,
+            width: rect.width as i32,
+            height: rect.height as i32,
+        }
     }
 }

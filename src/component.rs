@@ -66,6 +66,7 @@ impl Ui {
 
 pub struct Descriptor {
     id: Identity,
+    #[allow(clippy::type_complexity)]
     build: Box<dyn Fn(&dyn AnyProps) -> Node>,
     props: Box<dyn AnyProps>,
 }
@@ -120,14 +121,6 @@ impl Identity {
     pub fn unkeyed() -> Self {
         Self {
             key: None,
-            location: Location::caller(),
-        }
-    }
-
-    #[track_caller]
-    pub fn keyed(key: u32) -> Self {
-        Self {
-            key: Some(key),
             location: Location::caller(),
         }
     }

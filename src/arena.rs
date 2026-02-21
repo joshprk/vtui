@@ -9,7 +9,7 @@ use crate::{
     component::{AnyProps, Descriptor, Identity, Ui},
     context::Context,
     handler::EventHandler,
-    layout::LogicalRect,
+    layout::Region,
     listeners::Listeners,
     transport::Event,
 };
@@ -127,7 +127,7 @@ pub struct Node {
     pub(crate) listeners: Listeners,
 
     children: Vec<NodeId>,
-    rect: LogicalRect,
+    rect: Region,
 }
 
 impl Node {
@@ -159,12 +159,12 @@ impl Default for Node {
             listeners: Listeners::default(),
             renderer: Box::new(|_| {}),
             children: Vec::new(),
-            rect: LogicalRect::zeroed(),
+            rect: Region::zeroed(),
         }
     }
 }
 
 pub struct FrameData {
     pub(crate) current_node: NodeId,
-    pub(crate) rect: LogicalRect,
+    pub(crate) rect: Region,
 }
