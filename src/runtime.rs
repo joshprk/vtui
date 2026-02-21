@@ -1,33 +1,23 @@
-use std::time::{Duration, Instant};
-
 use ratatui::prelude::Backend;
 
 use crate::{
-    arena::Arena,
-    component::Node,
+    arena::{Arena, Node},
     context::Context,
     drivers::Driver,
     errors::RuntimeError,
-    events::Tick,
-    transport::{Dispatch, Message, MessageBus},
+    transport::Message,
 };
 
 pub struct Runtime {
     arena: Arena,
     context: Context,
-    bus: MessageBus,
 }
 
 impl Runtime {
-    pub fn new(node: Node, bus: MessageBus) -> Self {
-        let arena = Arena::from(node);
-        let handle = bus.handle();
-        let context = Context::new(handle.clone());
-
+    pub fn new(node: Node) -> Self {
         Self {
-            arena,
-            context,
-            bus,
+            arena: Arena::from(node),
+            context: Context::default(),
         }
     }
 
@@ -45,35 +35,12 @@ impl Runtime {
         Ok(())
     }
 
-    pub fn update(&mut self) {
-        if self.context.tick_requested() {
-            let _ = self.bus.handle().send(Tick {});
-            self.context.clear_tick_request();
-        }
-
-        let deadline = Instant::now() + Duration::from_millis(16);
-        let msg = self.bus.recv();
-
-        self.dispatch(msg);
-
-        while let Some(msg) = self.bus.recv_timeout(deadline - Instant::now()) {
-            self.dispatch(msg);
-        }
+    pub fn update(&mut self, msg: Message) {
+        msg.dispatch(&mut self.arena, &mut self.context);
+        self.context.commit();
     }
 
     pub fn should_exit(&self) -> bool {
-        self.context.shutdown_requested()
-    }
-
-    fn dispatch(&mut self, msg: Message) {
-        let dispatch = Dispatch::new(&mut self.arena, &mut self.context);
-        msg.dispatch(dispatch);
-        self.commit();
-    }
-
-    fn commit(&mut self) {
-        for cmd in self.context.drain_commands() {
-            cmd.reduce(&mut self.context, &mut self.arena);
-        }
+        self.context.shutdown_requested
     }
 }

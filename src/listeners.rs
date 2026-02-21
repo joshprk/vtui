@@ -1,8 +1,8 @@
 use core::any::{Any, TypeId};
 
-use crate::{context::EventContext, transport::Event};
+use crate::{handler::EventHandler, transport::Event};
 
-type EventListener<E> = Box<dyn FnMut(&mut EventContext<E>)>;
+type EventListener<E> = Box<dyn FnMut(&mut EventHandler<E>)>;
 
 #[derive(Default)]
 pub struct Listeners {
@@ -14,7 +14,7 @@ impl Listeners {
     pub fn push<E, F>(&mut self, callback: F)
     where
         E: Event,
-        F: FnMut(&mut EventContext<E>) + 'static,
+        F: FnMut(&mut EventHandler<E>) + 'static,
     {
         let id = TypeId::of::<E>();
         let cb = Box::new(callback) as EventListener<E>;
@@ -28,7 +28,7 @@ impl Listeners {
         }
     }
 
-    pub fn dispatch<E: Event>(&mut self, event: &mut EventContext<E>) {
+    pub fn dispatch<E: Event>(&mut self, event: &mut EventHandler<E>) {
         if let Some(listeners) = self.get_mut::<E>() {
             listeners.iter_mut().for_each(|cb| cb(event));
         }

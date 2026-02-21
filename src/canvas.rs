@@ -1,222 +1,83 @@
-use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
-use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::UnicodeWidthStr;
+use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
-use crate::{
-    arena::{ArenaNode, NodeId},
-    component::NodeAttributes,
-    context::Context,
-    layout::LogicalRect,
-};
+use crate::{arena::FrameData, context::Context, layout::Region};
 
-/// A drawing surface scoped to a rectangular region of the terminal buffer.
-///
-/// `Canvas` cannot be constructed directly. It is given to renderers via
-/// [Component::draw](crate::component::Component).
 pub struct Canvas<'a> {
-    buf: &'a mut Buffer,
+    buffer: &'a mut Buffer,
     context: &'a Context,
-    current_node: NodeId,
-    attributes: &'a NodeAttributes,
-    rect: LogicalRect,
+    data: FrameData,
 }
 
 impl<'a> Canvas<'a> {
-    /// Creates a new canvas with the given region.
-    pub(crate) fn new(
-        buf: &'a mut Buffer,
-        context: &'a Context,
-        current_node: NodeId,
-        node: &'a ArenaNode,
-    ) -> Self {
-        let rect = node.area();
-        let attributes = node.attributes();
+    pub fn widget(&mut self, widget: impl Widget, region: Region) {
+        render_widget(widget, region, self.buffer);
+    }
 
+    pub fn rect(&self) -> Region {
+        Region::origin(self.data.rect.width, self.data.rect.height)
+    }
+
+    pub(crate) fn new(buffer: &'a mut Buffer, context: &'a Context, data: FrameData) -> Self {
         Self {
-            buf,
+            buffer,
             context,
-            current_node,
-            attributes,
-            rect,
+            data,
         }
     }
 }
 
-impl Canvas<'_> {
-    /// Returns the underlying buffer.
-    pub fn buffer_mut(&mut self) -> &mut Buffer {
-        self.buf
+fn render_widget(widget: impl Widget, region: Region, buf: &mut Buffer) {
+    if region.width <= 0 || region.height <= 0 {
+        return;
     }
 
-    /// Returns the relative rectangular region of this canvas.
-    pub fn area(&self) -> LogicalRect {
-        LogicalRect::origin(self.rect.width, self.rect.height)
+    let w = region.width.clamp(0, u16::MAX as i32) as u16;
+    let h = region.height.clamp(0, u16::MAX as i32) as u16;
+
+    if w == 0 || h == 0 {
+        return;
     }
 
-    /// Determines if this component is focused.
-    pub fn is_focused(&self) -> bool {
-        self.context.focused() == Some(self.current_node)
+    let rendered_region = Region::new(region.x, region.y, w as i32, h as i32);
+    let visible = rendered_region.intersection(Region::from(buf.area));
+
+    if visible.width <= 0 || visible.height <= 0 {
+        return;
     }
 
-    /// Draws text content at a given position.
-    ///
-    /// This function is panic-free and text is automatically clipped.
-    pub fn text<T, S>(&mut self, x: i32, y: i32, text: T, style: S)
-    where
-        T: AsRef<str>,
-        S: Into<Style>,
-    {
-        self.set_stringn(x, y, text, usize::MAX, style);
-    }
+    let temp_area = Rect::new(0, 0, w, h);
+    let mut temp_buf = Buffer::empty(temp_area);
+    widget.render(temp_area, &mut temp_buf);
 
-    /// Draws a [ratatui] widget at the given region.
-    ///
-    /// This function is panic-free and text is automatically clipped.
-    pub fn widget(&mut self, rect: impl Into<LogicalRect>, widget: impl Widget) {
-        self.render_widget(rect.into(), widget);
-    }
+    let dst_x = visible.x as usize;
+    let dst_y = visible.y as usize;
+    let src_x = visible.x.saturating_sub(rendered_region.x).max(0) as usize;
+    let src_y = visible.y.saturating_sub(rendered_region.y).max(0) as usize;
+    let copy_w = visible.width.max(0) as usize;
+    let copy_h = visible.height.max(0) as usize;
 
-    /// An internal helper which draws text content at a given position.
-    fn set_stringn<T, S>(&mut self, x: i32, y: i32, text: T, max_width: usize, style: S)
-    where
-        T: AsRef<str>,
-        S: Into<Style>,
-    {
-        let buffer_area = {
-            let inner = LogicalRect::from(self.buf.area);
+    let buf_w = buf.area.width as usize;
+    let tmp_w = w as usize;
 
-            if self.clipped() {
-                inner.intersection(self.rect)
-            } else {
-                inner
-            }
-        };
+    for row in 0..copy_h {
+        let src_row = src_y.saturating_add(row);
+        let dst_row = dst_y.saturating_add(row);
+        let src_base = src_row.saturating_mul(tmp_w).saturating_add(src_x);
+        let dst_base = dst_row.saturating_mul(buf_w).saturating_add(dst_x);
 
-        let buf_x = self.get_buf_column(x);
-        let buf_y = self.get_buf_row(y);
-        let max_width = max_width.try_into().unwrap_or(i32::MAX);
+        for col in 0..copy_w {
+            let src_idx = src_base.saturating_add(col);
+            let dst_idx = dst_base.saturating_add(col);
 
-        if buf_y < buffer_area.top() || buf_y >= buffer_area.bottom() {
-            return;
-        }
-
-        let start = buf_x.max(buffer_area.left());
-
-        if start >= buffer_area.right() {
-            return;
-        }
-
-        let mut remaining = (buffer_area.right() - start).clamp(0, max_width) as u16;
-        let mut skip_width = (start - buf_x).max(0) as u16;
-        let mut cursor = start as u16;
-        let row = buf_y as u16;
-
-        let style = style.into();
-
-        for g in UnicodeSegmentation::graphemes(text.as_ref(), true) {
-            if g.contains(char::is_control) {
+            let Some(src_cell) = temp_buf.content.get(src_idx) else {
                 continue;
-            }
+            };
 
-            let width = g.width() as u16;
-
-            if width == 0 || skip_width > 0 {
-                skip_width = skip_width.saturating_sub(width);
+            let Some(dst_cell) = buf.content.get_mut(dst_idx) else {
                 continue;
-            }
+            };
 
-            if remaining < width {
-                break;
-            }
-
-            self.buf[(cursor, row)].set_symbol(g).set_style(style);
-
-            let end = cursor + width;
-            cursor += 1;
-
-            while cursor < end {
-                self.buf[(cursor, row)].reset();
-                cursor += 1;
-            }
-
-            remaining -= width;
+            *dst_cell = src_cell.clone();
         }
-    }
-
-    /// An internal helper that draws a `ratatui` widget at a given region.
-    fn render_widget(&mut self, rect: LogicalRect, widget: impl Widget) {
-        let (offset_x, offset_y) = self.attributes.offset;
-        let rect = rect.with_offset(offset_x - self.rect.x, offset_y - self.rect.y);
-
-        if !rect.intersects(self.rect) {
-            return;
-        }
-
-        // Clip to canvas viewport
-        let clip = rect.intersection(self.rect);
-
-        // Clip to buffer bounds - this ensures non-negative coordinates
-        let buffer_bounds = LogicalRect::from(self.buf.area);
-        let final_clip = clip.intersection(buffer_bounds);
-
-        // Early exit if nothing visible in buffer
-        if final_clip.width <= 0 || final_clip.height <= 0 {
-            return;
-        }
-
-        // Now final_clip.{x,y} are guaranteed >= buffer_bounds.{x,y}
-        // For typical case where buffer starts at (0,0), they're guaranteed >= 0
-
-        // Create temporary buffer for widget rendering
-        let temp_rect = Rect {
-            x: 0,
-            y: 0,
-            width: rect.width.min(u16::MAX as i32) as u16,
-            height: rect.height.min(u16::MAX as i32) as u16,
-        };
-
-        let mut temp_buf = Buffer::empty(temp_rect);
-        widget.render(temp_rect, &mut temp_buf);
-
-        // Calculate source offset in temp buffer
-        // This tells us which part of the rendered widget to copy
-        let src_x0 = (final_clip.x - rect.x) as usize;
-        let src_y0 = (final_clip.y - rect.y) as usize;
-
-        // Calculate destination offset in canvas buffer
-        // Subtract buffer area offset to get array index
-        let dst_x0 = (final_clip.x - self.buf.area.x as i32) as usize;
-        let dst_y0 = (final_clip.y - self.buf.area.y as i32) as usize;
-
-        let src_stride = rect.width as usize;
-        let dst_stride = self.buf.area.width as usize;
-        let row_len = final_clip.width as usize;
-
-        // Copy visible portion from temp buffer to canvas buffer
-        for row in 0..final_clip.height as usize {
-            let src_row = (src_y0 + row) * src_stride + src_x0;
-            let dst_row = (dst_y0 + row) * dst_stride + dst_x0;
-
-            let src = &temp_buf.content[src_row..src_row + row_len];
-            let dst = &mut self.buf.content[dst_row..dst_row + row_len];
-            dst.clone_from_slice(src);
-        }
-    }
-
-    /// Converts a x-coordinate local to this canvas to the global buffer space.
-    fn get_buf_column(&self, x: i32) -> i32 {
-        let (offset_x, _) = self.attributes.offset;
-        self.rect.x + x - offset_x
-    }
-
-    /// Converts a y-coordinate local to this canvas to the global buffer spcae.
-    fn get_buf_row(&self, y: i32) -> i32 {
-        let (_, offset_y) = self.attributes.offset;
-        self.rect.y + y - offset_y
-    }
-
-    /// Determines if content should be drawn even if outside of the canvas region.
-    fn clipped(&self) -> bool {
-        self.attributes.clipped
     }
 }
