@@ -45,10 +45,18 @@ impl Arena {
     }
 
     pub fn render(&mut self, frame: &mut Frame, context: &Context) {
+        self.compute_layout(frame);
+
         for id in self.compute_traversal().into_iter() {
             let data = self.frame_data(id);
             let canvas = Canvas::new(frame.buffer_mut(), context, data);
             self.nodes[id].render(canvas);
+        }
+    }
+
+    fn compute_layout(&mut self, frame: &mut Frame) {
+        for id in self.compute_traversal() {
+            self.nodes[id].rect = frame.area().into();
         }
     }
 
@@ -62,7 +70,7 @@ impl Arena {
             stack.extend(&node.children);
         }
 
-        stack
+        order
     }
 
     fn frame_data(&self, id: NodeId) -> FrameData {
