@@ -1,6 +1,6 @@
-use ratatui::buffer::Buffer;
+use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
-use crate::{arena::FrameData, context::Context};
+use crate::{arena::FrameData, context::Context, layout::Region};
 
 pub struct Canvas<'a> {
     buffer: &'a mut Buffer,
@@ -17,3 +17,5 @@ impl<'a> Canvas<'a> {
         }
     }
 }
+
+fn render_widget(widget: impl Widget, region: Region, buf: &mut Buffer) {}
