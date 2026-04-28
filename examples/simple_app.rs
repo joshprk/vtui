@@ -1,39 +1,61 @@
+use std::{cell::Cell, rc::Rc, time::Duration};
+
 use ratatui::widgets::Paragraph;
-use vtui::{events::*, prelude::*};
+use vtui::{LaunchBuilder, events::*, prelude::*};
 
 #[component]
 fn App(c: Component) -> Node {
-    c.listen::<KeyPress>(|event| {
-        if event.key == KeyCode::Char('q') {
-            event.request_shutdown();
+    let test = Rc::new(Cell::new(0));
+
+    c.listen::<KeyPress>({
+        let test = test.clone();
+        move |event| {
+            test.update(|x| x + 1);
+            if event.key == KeyCode::Char('q') {
+                event.request_shutdown();
+            }
         }
     });
 
-    c.compose(|ui| {
-        ui.child(Counter, ()).measure(Measure::Percent(0.5));
-        ui.child(Counter, ()).measure(Measure::Percent(0.5));
+    c.compose(move |ui| {
+        let test = test.clone();
+
+        ui.child(Button, ButtonProps {
+            text: "Hello world".into(),
+            callback: Callback::from(move || {
+                test.update(|x| x + 1);
+            }),
+        });
+
+        ui.child(Button, ButtonProps {
+            text: "This is a button".into(),
+            callback: Callback::from(|| {
+
+            }),
+        });
     })
 }
 
+#[derive(Clone, PartialEq)]
+struct ButtonProps {
+    text: String,
+    callback: Callback,
+}
+
+impl Props for ButtonProps {}
+
 #[component]
-fn Counter(c: Component) -> Node {
-    let mut clicks = c.state(0);
-
-    c.draw(move |canvas| {
-        let paragraph = Paragraph::new(format!("Clicks: {}", clicks.read())).centered();
-
-        canvas.widget(canvas.area(), paragraph);
-    });
-
-    c.listen::<MouseDown>(move |event| {
-        if event.is_mouse_hit() {
-            clicks.set(|c| *c += 1);
-        }
+fn Button(c: Component, p: ButtonProps) -> Node {
+    c.draw(|canvas| {
+        let paragraph = Paragraph::new("Hello world!");
+        canvas.widget(paragraph, canvas.area());
     });
 
     c.compose(|_| {})
 }
 
-fn main() {
-    vtui::launch(App)
+fn main() -> vtui::Result {
+    LaunchBuilder::new()
+        .frametime(Duration::from_millis(16))
+        .launch(App)
 }

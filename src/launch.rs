@@ -1,4 +1,5 @@
-use std::io;
+use core::time::Duration;
+use std::{io, time::Instant};
 
 use crate::{
     component::{Component, Factory},
@@ -8,32 +9,55 @@ use crate::{
     transport::MessageBus,
 };
 
-/// Builder for configuring and launching an application.
-#[derive(Default)]
-pub struct LaunchBuilder {}
+pub struct LaunchBuilder {
+    frametime: Duration,
+}
+
+impl Default for LaunchBuilder {
+    fn default() -> Self {
+        LaunchBuilder {
+            frametime: Duration::from_millis(16),
+        }
+    }
+}
 
 impl LaunchBuilder {
-    /// Creates a new builder with default settings.
     pub fn new() -> Self {
-        LaunchBuilder::default()
+        Self::default()
     }
 
-    /// Launches the application with the given root component.
-    pub fn launch(self, app: Factory) -> Result<(), RuntimeError> {
-        let node = app(Component::new(), ());
+    pub fn frametime(mut self, budget: Duration) -> Self {
+        self.frametime = budget;
+        self
+    }
 
+    pub fn launch(self, app: Factory) -> Result<(), RuntimeError> {
+        let root = app(Component::default(), ());
         let bus = MessageBus::new();
-        let handle = bus.handle();
+        let tx = bus.sender().clone();
+
+        let mut runtime = Runtime::new(root);
         let mut driver = CrosstermDriver::new(io::stdout())?;
 
         driver.setup()?;
-        driver.spawn_event_handler(handle.clone());
-
-        let mut runtime = Runtime::new(node, bus);
+        driver.spawn_event_handler(tx);
 
         loop {
             runtime.draw(&mut driver)?;
-            runtime.update();
+
+            let msg = bus.recv();
+
+            let frame_start = Instant::now();
+            let frame_time = self.frametime;
+
+            runtime.update(msg);
+
+            while let Some(msg) = {
+                let remaining = frame_time.saturating_sub(frame_start.elapsed());
+                bus.recv_timeout(remaining)
+            } {
+                runtime.update(msg);
+            }
 
             if runtime.should_exit() {
                 break;
@@ -46,13 +70,6 @@ impl LaunchBuilder {
     }
 }
 
-/// Launches an app with the given root component.
-///
-/// # Panics
-///
-/// Panics if the runtime encounters an error. Use [`LaunchBuilder`] for controlled error handling.
 pub fn launch(app: Factory) {
-    LaunchBuilder::new()
-        .launch(app)
-        .expect("app panicked unexpectedly");
+    LaunchBuilder::default().launch(app).expect("runtime error")
 }

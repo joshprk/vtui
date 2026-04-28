@@ -1,76 +1,38 @@
 use core::{any::Any, time::Duration};
 
-use crate::{
-    arena::{Arena, NodeId},
-    context::Context,
-    errors::SendError,
-    layout::LogicalRect,
-};
+use crate::{arena::Arena, context::Context, errors::SendError};
 
-pub trait Event: Any + Send {
-    fn target(&self, _arena: &Arena) -> Option<NodeId> {
-        None
-    }
-}
+pub trait Event: Any + Send {}
 
 pub trait MouseEvent: Event {
     fn coords(&self) -> (u16, u16);
 }
 
-impl<E: MouseEvent> Event for E {
-    fn target(&self, arena: &Arena) -> Option<NodeId> {
-        let (x, y) = self.coords();
-        let cursor = LogicalRect::new(x as i32, y as i32, 1, 1);
-
-        for (id, node) in arena.traverse().rev() {
-            if node.area().intersects(cursor) {
-                return Some(id);
-            }
-        }
-
-        None
-    }
-}
+impl<E: MouseEvent> Event for E {}
 
 pub struct Message {
     event: Box<dyn Event>,
-    dispatch: fn(Message, Dispatch<'_>),
-}
-
-impl<E: Event> From<E> for Message {
-    fn from(event: E) -> Self {
-        Self {
-            event: Box::new(event),
-            dispatch: Self::dispatch_impl::<E>,
-        }
-    }
+    dispatch: fn(&mut Arena, Message, &mut Context),
 }
 
 impl Message {
     pub fn new<E: Event>(event: E) -> Self {
-        Self::from(event)
+        fn trampoline<E: Event>(arena: &mut Arena, msg: Message, ctx: &mut Context) {
+            let event = (msg.event as Box<dyn Any>)
+                .downcast::<E>()
+                .expect("failed to downcast event");
+            arena.update(event.as_ref(), ctx);
+        }
+
+        let event = Box::new(event);
+        let dispatch = trampoline::<E>;
+
+        Self { event, dispatch }
     }
 
-    pub fn dispatch(self, dispatch: Dispatch<'_>) {
-        (self.dispatch)(self, dispatch)
-    }
-
-    fn dispatch_impl<E: Event>(msg: Self, dispatch: Dispatch<'_>) {
-        let event = (msg.event as Box<dyn Any>)
-            .downcast::<E>()
-            .expect("TypeId mismatch");
-        dispatch.arena.update(event.as_ref(), dispatch.context);
-    }
-}
-
-pub struct Dispatch<'d> {
-    arena: &'d mut Arena,
-    context: &'d mut Context,
-}
-
-impl<'d> Dispatch<'d> {
-    pub fn new(arena: &'d mut Arena, context: &'d mut Context) -> Self {
-        Self { arena, context }
+    pub fn dispatch(self, arena: &mut Arena, ctx: &mut Context) {
+        let dispatch_fn = self.dispatch;
+        dispatch_fn(arena, self, ctx);
     }
 }
 
@@ -81,33 +43,27 @@ pub struct MessageBus {
 
 impl Default for MessageBus {
     fn default() -> Self {
-        let (tx, rx) = flume::bounded(Self::DEFAULT_CAPACITY);
-        let tx = MessageSender::from(tx);
+        let (tx, rx) = flume::unbounded();
+        let tx = MessageSender { tx };
         Self { tx, rx }
     }
 }
 
 impl MessageBus {
-    const DEFAULT_CAPACITY: usize = 128;
-
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn handle(&self) -> &MessageSender {
+    pub fn sender(&self) -> &MessageSender {
         &self.tx
     }
 
     pub fn recv(&self) -> Message {
-        self.rx.recv().expect("bus closed unexpectedly")
+        self.rx.recv().expect("channel closed unexpectedly")
     }
 
     pub fn recv_timeout(&self, timeout: Duration) -> Option<Message> {
-        match self.rx.recv_timeout(timeout) {
-            Ok(msg) => Some(msg),
-            Err(flume::RecvTimeoutError::Timeout) => None,
-            Err(flume::RecvTimeoutError::Disconnected) => panic!("bus closed unexpectedly"),
-        }
+        self.rx.recv_timeout(timeout).ok()
     }
 }
 
@@ -116,14 +72,8 @@ pub struct MessageSender {
     tx: flume::Sender<Message>,
 }
 
-impl From<flume::Sender<Message>> for MessageSender {
-    fn from(tx: flume::Sender<Message>) -> Self {
-        Self { tx }
-    }
-}
-
 impl MessageSender {
-    pub fn send(&self, msg: impl Into<Message>) -> Result<(), SendError> {
-        self.tx.send(msg.into()).map_err(|_| SendError)
+    pub fn send(&self, msg: Message) -> Result<(), SendError> {
+        self.tx.send(msg).map_err(|_| SendError)
     }
 }
