@@ -1,24 +1,46 @@
-use std::time::Duration;
+use std::{cell::Cell, rc::Rc, time::Duration};
 
 use ratatui::widgets::Paragraph;
 use vtui::{LaunchBuilder, events::*, prelude::*};
 
 #[component]
 fn App(c: Component) -> Node {
-    c.listen::<KeyPress>(|event| {
-        if event.key == KeyCode::Char('q') {
-            event.request_shutdown();
+    let test = Rc::new(Cell::new(0));
+
+    c.listen::<KeyPress>({
+        let test = test.clone();
+        move |event| {
+            test.update(|x| x + 1);
+            if event.key == KeyCode::Char('q') {
+                event.request_shutdown();
+            }
         }
     });
 
-    c.compose(|ui| {
-        ui.child(Button, ButtonProps {});
-        ui.child(Button, ButtonProps {});
+    c.compose(move |ui| {
+        let test = test.clone();
+
+        ui.child(Button, ButtonProps {
+            text: "Hello world".into(),
+            callback: Callback::from(move || {
+                test.update(|x| x + 1);
+            }),
+        });
+
+        ui.child(Button, ButtonProps {
+            text: "This is a button".into(),
+            callback: Callback::from(|| {
+
+            }),
+        });
     })
 }
 
 #[derive(Clone, PartialEq)]
-struct ButtonProps {}
+struct ButtonProps {
+    text: String,
+    callback: Callback,
+}
 
 impl Props for ButtonProps {}
 
@@ -26,7 +48,7 @@ impl Props for ButtonProps {}
 fn Button(c: Component, p: ButtonProps) -> Node {
     c.draw(|canvas| {
         let paragraph = Paragraph::new("Hello world!");
-        canvas.widget(paragraph, canvas.rect());
+        canvas.widget(paragraph, canvas.area());
     });
 
     c.compose(|_| {})
