@@ -43,6 +43,10 @@ impl Arena {
 
         for &id in self.traversal.iter() {
             let node = &self.nodes[id];
+            if (id == self.root || node.attributes().selection_root) && node.selectable() {
+                let area = node.area().intersection(node.effective_clip());
+                context.register_selection_root(id, area);
+            }
             let mut canvas = Canvas::new(buf, context, id, node);
 
             node.render(&mut canvas);

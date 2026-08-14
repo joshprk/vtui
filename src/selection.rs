@@ -109,6 +109,12 @@ struct TextRun {
     visible: Vec<VisibleGrapheme>,
 }
 
+#[derive(Clone, Copy, Debug)]
+struct SelectionRoot {
+    id: NodeId,
+    area: LogicalRect,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct RunToken(usize);
 
@@ -175,6 +181,8 @@ pub(crate) fn layout_text(
 pub(crate) struct SelectionController {
     frame: Vec<TextRun>,
     building: Vec<TextRun>,
+    frame_roots: Vec<SelectionRoot>,
+    building_roots: Vec<SelectionRoot>,
     selection: Option<SelectionRange>,
     captured_root: Option<NodeId>,
 }
@@ -182,6 +190,13 @@ pub(crate) struct SelectionController {
 impl SelectionController {
     pub(crate) fn begin_frame(&mut self) {
         self.building.clear();
+        self.building_roots.clear();
+    }
+
+    pub(crate) fn register_root(&mut self, id: NodeId, area: LogicalRect) {
+        if area.width > 0 && area.height > 0 {
+            self.building_roots.push(SelectionRoot { id, area });
+        }
     }
 
     pub(crate) fn begin_text(
@@ -250,6 +265,8 @@ impl SelectionController {
         self.apply_highlight(buffer);
         core::mem::swap(&mut self.frame, &mut self.building);
         self.building.clear();
+        core::mem::swap(&mut self.frame_roots, &mut self.building_roots);
+        self.building_roots.clear();
     }
 
     pub(crate) fn handle_event<E: Event>(&mut self, event: &E) {
@@ -283,7 +300,10 @@ impl SelectionController {
     }
 
     fn begin_gesture(&mut self, x: i32, y: i32) {
-        let Some(point) = exact_hit(&self.frame, x, y, Ordering::Less) else {
+        let exact = exact_hit(&self.frame, x, y, Ordering::Less);
+        let nearest = root_at(&self.frame_roots, x, y)
+            .and_then(|root| nearest_start_hit(&self.frame, root, x, y));
+        let Some(point) = exact.or(nearest) else {
             self.selection = None;
             self.captured_root = None;
             return;
@@ -370,6 +390,14 @@ impl SelectionController {
     }
 }
 
+fn root_at(roots: &[SelectionRoot], x: i32, y: i32) -> Option<NodeId> {
+    roots
+        .iter()
+        .rev()
+        .find(|root| contains(root.area, x, y))
+        .map(|root| root.id)
+}
+
 fn patch_rect(buffer: &mut Buffer, rect: LogicalRect, style: Style) {
     let bounds = LogicalRect::from(buffer.area);
     let rect = rect.intersection(bounds);
@@ -403,11 +431,27 @@ fn nearest_hit(
         return Some(point);
     }
 
+    closest_grapheme(runs, root, x, y)
+        .map(|(id, grapheme)| point_for_grapheme(id, grapheme, direction))
+}
+
+fn nearest_start_hit(runs: &[TextRun], root: NodeId, x: i32, y: i32) -> Option<SelectionPoint> {
+    closest_grapheme(runs, root, x, y).map(|(id, grapheme)| {
+        let direction = (y, x).cmp(&(grapheme.screen.y, grapheme.screen.x));
+        point_for_grapheme(id, grapheme, direction)
+    })
+}
+
+fn closest_grapheme(
+    runs: &[TextRun],
+    root: NodeId,
+    x: i32,
+    y: i32,
+) -> Option<(RunId, &VisibleGrapheme)> {
     runs.iter()
         .flat_map(|run| run.visible.iter().map(move |grapheme| (run.id, grapheme)))
         .filter(|(id, grapheme)| id.root == root && grapheme.visible)
         .min_by_key(|(_, grapheme)| distance_key(grapheme.screen, x, y))
-        .map(|(id, grapheme)| point_for_grapheme(id, grapheme, direction))
 }
 
 fn distance_key(rect: LogicalRect, x: i32, y: i32) -> (i32, i32) {
@@ -702,7 +746,7 @@ mod tests {
     }
 
     #[test]
-    fn layout_margin_cannot_start_a_selection() {
+    fn blank_space_outside_a_selection_root_cannot_start_selection() {
         let (root, node) = ids();
         let mut controller = SelectionController::default();
         controller.begin_frame();
@@ -723,6 +767,43 @@ mod tests {
         controller.begin_gesture(1, 1);
 
         assert_eq!(controller.selected_text(), None);
+    }
+
+    #[test]
+    fn blank_space_inside_a_selection_root_starts_at_nearest_text() {
+        let (root, node) = ids();
+        let mut controller = SelectionController::default();
+        controller.begin_frame();
+        controller.register_root(root, LogicalRect::new(0, 0, 20, 8));
+        let first = controller
+            .begin_text(root, node, 0, "first".into(), TextOptions::default())
+            .unwrap();
+        let second = controller
+            .begin_text(root, node, 1, "second".into(), TextOptions::default())
+            .unwrap();
+        controller.record_visible(
+            first,
+            &GraphemePlacement {
+                symbol: "f",
+                source: 0..1,
+                screen: LogicalRect::new(8, 2, 1, 1),
+            },
+        );
+        controller.record_visible(
+            second,
+            &GraphemePlacement {
+                symbol: "d",
+                source: 5..6,
+                screen: LogicalRect::new(8, 4, 1, 1),
+            },
+        );
+        let mut buffer = Buffer::empty(Rect::new(0, 0, 20, 8));
+        controller.finish_frame(&mut buffer);
+
+        controller.begin_gesture(2, 2);
+        controller.update_gesture(8, 4);
+
+        assert_eq!(controller.selected_text().as_deref(), Some("first\nsecond"));
     }
 
     #[test]

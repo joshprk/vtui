@@ -107,6 +107,10 @@ impl Context {
         self.selection.borrow_mut().begin_frame();
     }
 
+    pub(crate) fn register_selection_root(&self, root: NodeId, area: LogicalRect) {
+        self.selection.borrow_mut().register_root(root, area);
+    }
+
     pub(crate) fn begin_selectable_text(
         &self,
         root: NodeId,
