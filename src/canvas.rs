@@ -1,13 +1,11 @@
-use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
-use unicode_segmentation::UnicodeSegmentation;
-use unicode_width::UnicodeWidthStr;
-
 use crate::{
     arena::{ArenaNode, NodeId},
     component::NodeAttributes,
     context::Context,
     layout::LogicalRect,
+    selection::{TextOptions, layout_text, normalize_text},
 };
+use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 
 /// A drawing surface scoped to a rectangular region of the terminal buffer.
 ///
@@ -19,6 +17,10 @@ pub struct Canvas<'a> {
     current_node: NodeId,
     attributes: &'a NodeAttributes,
     rect: LogicalRect,
+    effective_clip: LogicalRect,
+    selection_root: NodeId,
+    selectable: bool,
+    text_emission: u32,
 }
 
 impl<'a> Canvas<'a> {
@@ -38,6 +40,10 @@ impl<'a> Canvas<'a> {
             current_node,
             attributes,
             rect,
+            effective_clip: node.effective_clip(),
+            selection_root: node.selection_root(),
+            selectable: node.selectable(),
+            text_emission: 0,
         }
     }
 }
@@ -45,6 +51,8 @@ impl<'a> Canvas<'a> {
 impl Canvas<'_> {
     /// Returns the underlying buffer.
     pub fn buffer_mut(&mut self) -> &mut Buffer {
+        self.context
+            .occlude_all_selection(LogicalRect::from(self.buf.area));
         self.buf
     }
 
@@ -66,7 +74,16 @@ impl Canvas<'_> {
         T: AsRef<str>,
         S: Into<Style>,
     {
-        self.set_stringn(x, y, text, usize::MAX, style);
+        self.text_with(x, y, text, style, TextOptions::default());
+    }
+
+    /// Draws semantic text with explicit selection behavior.
+    pub fn text_with<T, S>(&mut self, x: i32, y: i32, text: T, style: S, options: TextOptions)
+    where
+        T: AsRef<str>,
+        S: Into<Style>,
+    {
+        self.set_stringn(x, y, text, usize::MAX, style, options);
     }
 
     /// Draws a [ratatui] widget at the given region.
@@ -76,70 +93,69 @@ impl Canvas<'_> {
         self.render_widget(rect.into(), widget);
     }
 
+    /// Returns a copy of the currently selected semantic text.
+    pub fn selected_text(&self) -> Option<String> {
+        self.context.selected_text()
+    }
+
     /// An internal helper which draws text content at a given position.
-    fn set_stringn<T, S>(&mut self, x: i32, y: i32, text: T, max_width: usize, style: S)
-    where
+    fn set_stringn<T, S>(
+        &mut self,
+        x: i32,
+        y: i32,
+        text: T,
+        max_width: usize,
+        style: S,
+        mut options: TextOptions,
+    ) where
         T: AsRef<str>,
         S: Into<Style>,
     {
-        let buffer_area = {
-            let inner = LogicalRect::from(self.buf.area);
-
-            if self.clipped() {
-                inner.intersection(self.rect)
-            } else {
-                inner
-            }
+        options.selectable &= self.selectable;
+        let normalized = normalize_text(text.as_ref());
+        let token = if options.selectable {
+            let token = self.context.begin_selectable_text(
+                self.selection_root,
+                self.current_node,
+                self.text_emission,
+                normalized.clone(),
+                options,
+            );
+            self.text_emission = self.text_emission.saturating_add(1);
+            token
+        } else {
+            None
         };
 
-        let buf_x = self.get_buf_column(x);
-        let buf_y = self.get_buf_row(y);
-        let max_width = max_width.try_into().unwrap_or(i32::MAX);
-
-        if buf_y < buffer_area.top() || buf_y >= buffer_area.bottom() {
-            return;
-        }
-
-        let start = buf_x.max(buffer_area.left());
-
-        if start >= buffer_area.right() {
-            return;
-        }
-
-        let mut remaining = (buffer_area.right() - start).clamp(0, max_width) as u16;
-        let mut skip_width = (start - buf_x).max(0) as u16;
-        let mut cursor = start as u16;
-        let row = buf_y as u16;
-
+        let placements = layout_text(
+            &normalized,
+            self.get_buf_column(x),
+            self.get_buf_row(y),
+            self.effective_clip,
+            max_width,
+        );
         let style = style.into();
-
-        for g in UnicodeSegmentation::graphemes(text.as_ref(), true) {
-            if g.contains(char::is_control) {
-                continue;
+        for placement in placements {
+            self.paint_grapheme(&placement, style);
+            if let Some(token) = token {
+                self.context.record_selectable_grapheme(token, &placement);
             }
+        }
+    }
 
-            let width = g.width() as u16;
-
-            if width == 0 || skip_width > 0 {
-                skip_width = skip_width.saturating_sub(width);
-                continue;
-            }
-
-            if remaining < width {
-                break;
-            }
-
-            self.buf[(cursor, row)].set_symbol(g).set_style(style);
-
-            let end = cursor + width;
-            cursor += 1;
-
-            while cursor < end {
-                self.buf[(cursor, row)].reset();
-                cursor += 1;
-            }
-
-            remaining -= width;
+    fn paint_grapheme(
+        &mut self,
+        placement: &crate::selection::GraphemePlacement<'_>,
+        style: Style,
+    ) {
+        let row = placement.screen.y as u16;
+        let start = placement.screen.x as u16;
+        let end = placement.screen.right() as u16;
+        self.buf[(start, row)]
+            .set_symbol(placement.symbol)
+            .set_style(style);
+        for column in start + 1..end {
+            self.buf[(column, row)].reset();
         }
     }
 
@@ -152,8 +168,10 @@ impl Canvas<'_> {
             return;
         }
 
-        // Clip to canvas viewport
-        let clip = rect.intersection(self.rect);
+        // Widgets remain bounded by their requested component viewport and all ancestor clips.
+        let clip = rect
+            .intersection(self.rect)
+            .intersection(self.effective_clip);
 
         // Clip to buffer bounds - this ensures non-negative coordinates
         let buffer_bounds = LogicalRect::from(self.buf.area);
@@ -201,6 +219,8 @@ impl Canvas<'_> {
             let dst = &mut self.buf.content[dst_row..dst_row + row_len];
             dst.clone_from_slice(src);
         }
+
+        self.context.occlude_selection(final_clip);
     }
 
     /// Converts a x-coordinate local to this canvas to the global buffer space.
@@ -213,10 +233,5 @@ impl Canvas<'_> {
     fn get_buf_row(&self, y: i32) -> i32 {
         let (_, offset_y) = self.attributes.offset;
         self.rect.y + y - offset_y
-    }
-
-    /// Determines if content should be drawn even if outside of the canvas region.
-    fn clipped(&self) -> bool {
-        self.attributes.clipped
     }
 }

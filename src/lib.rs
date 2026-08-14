@@ -55,6 +55,7 @@ pub use crate::{
     component::{Ui, UiNode},
     context::EventContext,
     launch::{LaunchBuilder, launch},
+    selection::{TextJoin, TextKey, TextOptions},
 };
 
 /// Event types emitted by the framework.
@@ -84,6 +85,7 @@ pub(crate) mod input;
 pub(crate) mod layout;
 pub(crate) mod listeners;
 pub(crate) mod runtime;
+pub(crate) mod selection;
 pub(crate) mod state;
 pub(crate) mod transport;
 

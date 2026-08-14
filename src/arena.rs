@@ -37,6 +37,7 @@ impl Arena {
     /// Draws the node tree on the given frame.
     pub fn render(&mut self, frame: &mut Frame, context: &Context) {
         compute_layout(&mut self.nodes, self.root, frame.area().into());
+        context.begin_selection_frame();
 
         let buf = frame.buffer_mut();
 
@@ -46,10 +47,13 @@ impl Arena {
 
             node.render(&mut canvas);
         }
+
+        context.finish_selection_frame(buf);
     }
 
     /// Broadcasts an event to the node tree.
     pub fn update<E: Event>(&mut self, event: &E, context: &mut Context) {
+        context.handle_selection_event(event);
         let target = event.target(self);
         context.set_target(target);
 
@@ -105,6 +109,9 @@ new_key_type! { pub struct NodeId; }
 pub struct ArenaNode {
     node: Node,
     rect: LogicalRect,
+    effective_clip: LogicalRect,
+    selection_root: NodeId,
+    selectable: bool,
     children: Vec<NodeId>,
 }
 
@@ -113,6 +120,9 @@ impl From<Node> for ArenaNode {
         Self {
             node,
             rect: LogicalRect::zeroed(),
+            effective_clip: LogicalRect::zeroed(),
+            selection_root: NodeId::default(),
+            selectable: true,
             children: Vec::new(),
         }
     }
@@ -127,6 +137,18 @@ impl ArenaNode {
         self.node.attributes()
     }
 
+    pub fn effective_clip(&self) -> LogicalRect {
+        self.effective_clip
+    }
+
+    pub fn selection_root(&self) -> NodeId {
+        self.selection_root
+    }
+
+    pub fn selectable(&self) -> bool {
+        self.selectable
+    }
+
     /// Renders the component into the frame buffer.
     fn render(&self, canvas: &mut Canvas) {
         if let Some(renderer) = &self.node.renderer() {
@@ -137,15 +159,34 @@ impl ArenaNode {
 
 /// Assigns areas to nodes given their layout.
 fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport: LogicalRect) {
-    let mut stack = vec![(root, viewport, (0i32, 0i32))];
+    let mut stack = vec![(root, viewport, (0i32, 0i32), viewport, root, true)];
 
-    while let Some((id, rect, offset_acc)) = stack.pop() {
+    while let Some((id, rect, offset_acc, inherited_clip, inherited_root, inherited_selectable)) =
+        stack.pop()
+    {
         let margin = nodes[id].node.attributes().margin;
         let padding = nodes[id].node.attributes().padding;
         let offset = nodes[id].node.attributes().offset;
+        let attributes = *nodes[id].node.attributes();
 
         let content_rect = rect.inset(margin);
-        nodes[id].rect = content_rect.with_offset(offset_acc.0, offset_acc.1);
+        let viewport_rect = content_rect.with_offset(offset_acc.0, offset_acc.1);
+        let effective_clip = if attributes.clipped {
+            inherited_clip.intersection(viewport_rect)
+        } else {
+            inherited_clip
+        };
+        let selection_root = if attributes.selection_root {
+            id
+        } else {
+            inherited_root
+        };
+        let selectable = inherited_selectable && attributes.selectable;
+
+        nodes[id].rect = viewport_rect;
+        nodes[id].effective_clip = effective_clip;
+        nodes[id].selection_root = selection_root;
+        nodes[id].selectable = selectable;
 
         let child_offset = (offset_acc.0 + offset.0, offset_acc.1 + offset.1);
         let child_viewport = content_rect.inset(padding);
@@ -163,7 +204,14 @@ fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport
         let splits = compute_split(flow, placement, child_viewport, measures);
 
         for (id, rect) in children.iter().zip(splits).rev() {
-            stack.push((*id, rect, child_offset));
+            stack.push((
+                *id,
+                rect,
+                child_offset,
+                effective_clip,
+                selection_root,
+                selectable,
+            ));
         }
     }
 }

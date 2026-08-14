@@ -1,10 +1,11 @@
-use core::ops::Deref;
+use core::{cell::RefCell, ops::Deref};
 
 use crate::{
     arena::{Arena, ArenaNode, NodeId},
     component::NodeAttributes,
     events::FocusChanged,
     layout::{LogicalRect, Measure},
+    selection::{GraphemePlacement, RunToken, SelectionController, TextOptions},
     transport::{Event, MessageSender, MouseEvent},
 };
 
@@ -50,6 +51,7 @@ pub struct Context {
     command_buffer: Vec<Command>,
     tick_requested: bool,
     shutdown_requested: bool,
+    selection: RefCell<SelectionController>,
 }
 
 impl Context {
@@ -61,6 +63,7 @@ impl Context {
             command_buffer: Vec::default(),
             tick_requested: false,
             shutdown_requested: false,
+            selection: RefCell::new(SelectionController::default()),
         }
     }
 
@@ -98,6 +101,51 @@ impl Context {
 
     pub fn queued(&self) -> &[Command] {
         &self.command_buffer
+    }
+
+    pub(crate) fn begin_selection_frame(&self) {
+        self.selection.borrow_mut().begin_frame();
+    }
+
+    pub(crate) fn begin_selectable_text(
+        &self,
+        root: NodeId,
+        node: NodeId,
+        implicit_index: u32,
+        text: String,
+        options: TextOptions,
+    ) -> Option<RunToken> {
+        self.selection
+            .borrow_mut()
+            .begin_text(root, node, implicit_index, text, options)
+    }
+
+    pub(crate) fn record_selectable_grapheme(
+        &self,
+        token: RunToken,
+        placement: &GraphemePlacement<'_>,
+    ) {
+        self.selection.borrow_mut().record_visible(token, placement);
+    }
+
+    pub(crate) fn occlude_selection(&self, rect: LogicalRect) {
+        self.selection.borrow_mut().occlude(rect);
+    }
+
+    pub(crate) fn occlude_all_selection(&self, rect: LogicalRect) {
+        self.selection.borrow_mut().occlude_all(rect);
+    }
+
+    pub(crate) fn finish_selection_frame(&self, buffer: &mut ratatui::buffer::Buffer) {
+        self.selection.borrow_mut().finish_frame(buffer);
+    }
+
+    pub(crate) fn handle_selection_event<E: Event>(&self, event: &E) {
+        self.selection.borrow_mut().handle_event(event);
+    }
+
+    pub fn selected_text(&self) -> Option<String> {
+        self.selection.borrow().selected_text()
     }
 }
 
@@ -202,6 +250,11 @@ impl<E: Event> EventContext<'_, E> {
     /// Returns the current offset of this component.
     pub fn offset(&self) -> (i32, i32) {
         self.attributes.offset
+    }
+
+    /// Returns a copy of the currently selected semantic text.
+    pub fn selected_text(&self) -> Option<String> {
+        self.context.selected_text()
     }
 }
 

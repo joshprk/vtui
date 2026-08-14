@@ -23,6 +23,16 @@ pub struct Component {
 }
 
 impl Component {
+    /// Establishes a semantic text-selection boundary for this component's subtree.
+    pub fn set_selection_root(&self, selection_root: bool) {
+        self.node.borrow_mut().attributes.selection_root = selection_root;
+    }
+
+    /// Determines whether semantic text in this component's subtree is selectable.
+    pub fn set_selectable(&self, selectable: bool) {
+        self.node.borrow_mut().attributes.selectable = selectable;
+    }
+
     /// Determines whether this component should draw outside of its visual bounds.
     pub fn set_clipped(&self, clipped: bool) {
         self.node.borrow_mut().attributes.clipped = clipped;
@@ -162,7 +172,7 @@ impl Node {
 }
 
 /// Describes various properties for a [`Node`].
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct NodeAttributes {
     pub clipped: bool,
     pub focusable: bool,
@@ -172,6 +182,25 @@ pub struct NodeAttributes {
     pub measure: Measure,
     pub margin: Inset,
     pub padding: Inset,
+    pub selection_root: bool,
+    pub selectable: bool,
+}
+
+impl Default for NodeAttributes {
+    fn default() -> Self {
+        Self {
+            clipped: false,
+            focusable: false,
+            flow: Flow::default(),
+            placement: Placement::default(),
+            offset: (0, 0),
+            measure: Measure::default(),
+            margin: Inset::default(),
+            padding: Inset::default(),
+            selection_root: false,
+            selectable: true,
+        }
+    }
 }
 
 /// A builder for adding children to a component during composition.
