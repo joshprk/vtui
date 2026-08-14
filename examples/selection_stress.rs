@@ -37,13 +37,13 @@ fn DocumentViewport(c: Component) -> Node {
     });
 
     c.compose(|ui| {
-        ui.child(LongDocument, ())
-            .measure(Measure::Exact(DOCUMENT_LINES * 2 + 4));
+        ui.child(LongDocument, ());
     })
 }
 
 #[component]
 fn LongDocument(c: Component) -> Node {
+    c.set_clipped(true);
     let mut scroll = c.state(0i32);
 
     c.draw(move |canvas| {
@@ -96,6 +96,20 @@ fn LongDocument(c: Component) -> Node {
             KeyCode::Home => 0,
             KeyCode::End => DOCUMENT_LINES * 2,
             _ => return,
+        };
+        scroll.set(|value| *value = next);
+        event.set_offset(0, next);
+    });
+
+    c.listen::<MouseScroll>(move |event| {
+        if !event.is_mouse_hit() {
+            return;
+        }
+
+        let next = match event.direction {
+            MouseScrollDirection::Up => (*scroll.read() - 3).max(0),
+            MouseScrollDirection::Down => (*scroll.read() + 3).min(DOCUMENT_LINES * 2),
+            MouseScrollDirection::Left | MouseScrollDirection::Right => return,
         };
         scroll.set(|value| *value = next);
         event.set_offset(0, next);
@@ -168,7 +182,7 @@ fn Instructions(c: Component) -> Node {
         canvas.text(
             0,
             0,
-            "Drag with left mouse. ↑/↓, j/k, PgUp/PgDn, Home/End scroll. q/Esc quits.",
+            "Drag with left mouse. Wheel, ↑/↓, j/k, PgUp/PgDn, Home/End scroll. q/Esc quits.",
             Style::default().fg(Color::DarkGray),
         );
     });
