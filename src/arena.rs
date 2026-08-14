@@ -142,10 +142,12 @@ fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport
     while let Some((id, rect, offset_acc)) = stack.pop() {
         let margin = nodes[id].node.attributes().margin;
         let padding = nodes[id].node.attributes().padding;
+        let offset = nodes[id].node.attributes().offset;
 
         let content_rect = rect.inset(margin);
         nodes[id].rect = content_rect.with_offset(offset_acc.0, offset_acc.1);
 
+        let child_offset = (offset_acc.0 + offset.0, offset_acc.1 + offset.1);
         let child_viewport = content_rect.inset(padding);
 
         let node = &nodes[id].node;
@@ -161,7 +163,7 @@ fn compute_layout(nodes: &mut SlotMap<NodeId, ArenaNode>, root: NodeId, viewport
         let splits = compute_split(flow, placement, child_viewport, measures);
 
         for (id, rect) in children.iter().zip(splits).rev() {
-            stack.push((*id, rect, offset_acc));
+            stack.push((*id, rect, child_offset));
         }
     }
 }
