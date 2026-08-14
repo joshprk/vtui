@@ -13,7 +13,11 @@ mod component;
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,ignore
+/// // This example is compiled in a crate that depends on vtui.
+/// use vtui::prelude::*;
+/// use vtui_macros::component;
+///
 /// #[component]
 /// fn HelloWorld(c: Component) -> Node {
 ///     c.compose(|_| {})
