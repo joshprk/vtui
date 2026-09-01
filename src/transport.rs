@@ -76,20 +76,18 @@ impl<'d> Dispatch<'d> {
 
 pub struct MessageBus {
     tx: MessageSender,
-    rx: flume::Receiver<Message>,
+    rx: async_channel::Receiver<Message>,
 }
 
 impl Default for MessageBus {
     fn default() -> Self {
-        let (tx, rx) = flume::bounded(Self::DEFAULT_CAPACITY);
+        let (tx, rx) = async_channel::unbounded();
         let tx = MessageSender::from(tx);
         Self { tx, rx }
     }
 }
 
 impl MessageBus {
-    const DEFAULT_CAPACITY: usize = 128;
-
     pub fn new() -> Self {
         Self::default()
     }
@@ -98,32 +96,34 @@ impl MessageBus {
         &self.tx
     }
 
-    pub fn recv(&self) -> Message {
-        self.rx.recv().expect("bus closed unexpectedly")
+    pub async fn recv(&self) -> Message {
+        self.rx.recv().await.expect("bus closed unexpectedly")
     }
 
-    pub fn recv_timeout(&self, timeout: Duration) -> Option<Message> {
-        match self.rx.recv_timeout(timeout) {
-            Ok(msg) => Some(msg),
-            Err(flume::RecvTimeoutError::Timeout) => None,
-            Err(flume::RecvTimeoutError::Disconnected) => panic!("bus closed unexpectedly"),
-        }
+    pub async fn recv_timeout(&self, timeout: Duration) -> Option<Message> {
+        // Cancel-safe according to: https://github.com/smol-rs/async-channel/issues/111
+        // In other words, data loss will not occur if the timer wins the race.
+        smol::future::or(async { self.rx.recv().await.ok() }, async {
+            smol::Timer::after(timeout).await;
+            None
+        })
+        .await
     }
 }
 
 #[derive(Clone)]
 pub struct MessageSender {
-    tx: flume::Sender<Message>,
+    tx: async_channel::Sender<Message>,
 }
 
-impl From<flume::Sender<Message>> for MessageSender {
-    fn from(tx: flume::Sender<Message>) -> Self {
+impl From<async_channel::Sender<Message>> for MessageSender {
+    fn from(tx: async_channel::Sender<Message>) -> Self {
         Self { tx }
     }
 }
 
 impl MessageSender {
     pub fn send(&self, msg: impl Into<Message>) -> Result<(), SendError> {
-        self.tx.send(msg.into()).map_err(|_| SendError)
+        self.tx.try_send(msg.into()).map_err(|_| SendError)
     }
 }

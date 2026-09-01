@@ -19,7 +19,7 @@ impl LaunchBuilder {
     }
 
     /// Launches the application with the given root component.
-    pub fn launch(self, app: Factory) -> Result<(), RuntimeError> {
+    pub async fn launch(self, app: Factory) -> Result<(), RuntimeError> {
         let node = app(Component::new(), ());
 
         let bus = MessageBus::new();
@@ -27,13 +27,13 @@ impl LaunchBuilder {
         let mut driver = CrosstermDriver::new(io::stdout())?;
 
         driver.setup()?;
-        driver.spawn_event_handler(handle.clone());
+        // driver.spawn_event_handler(handle.clone());
 
         let mut runtime = Runtime::new(node, bus);
 
         loop {
             runtime.draw(&mut driver)?;
-            runtime.update();
+            runtime.update().await;
 
             if runtime.should_exit() {
                 break;
@@ -52,7 +52,10 @@ impl LaunchBuilder {
 ///
 /// Panics if the runtime encounters an error. Use [`LaunchBuilder`] for controlled error handling.
 pub fn launch(app: Factory) {
-    LaunchBuilder::new()
-        .launch(app)
-        .expect("app panicked unexpectedly");
+    smol::block_on(async {
+        LaunchBuilder::new()
+            .launch(app)
+            .await
+            .expect("app panicked unexpectedly");
+    })
 }
