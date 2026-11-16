@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+echo "Checking Rust build prerequisites"
+missing_packages=()
+for package in build-essential ca-certificates curl; do
+    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
+        missing_packages+=("$package")
+    fi
+done
+if ((${#missing_packages[@]})); then
+    sudo apt-get update
+    sudo apt-get install -y "${missing_packages[@]}"
+fi
+
+export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+export RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}"
+export PATH="$CARGO_HOME/bin:$PATH"
+
+echo "Installing stable Rust, rustfmt, and Clippy"
+if ! command -v rustup >/dev/null 2>&1; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+        sh -s -- -y --no-modify-path --default-toolchain stable --profile minimal \
+            --component rustfmt --component clippy
+else
+    rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+fi
+rustup default stable
+
+echo "Making Rust available to future login shells"
+profile_line="export PATH=\"$CARGO_HOME/bin:\$PATH\""
+for profile in "$HOME/.bash_profile" "$HOME/.profile"; do
+    if ! grep -Fqx "$profile_line" "$profile" 2>/dev/null; then
+        printf '\n%s\n' "$profile_line" >> "$profile"
+    fi
+done
+
+echo "Fetching locked workspace dependencies"
+cargo fetch --locked
+
+rustc --version
+cargo --version
+echo "Rust orb setup ready"
