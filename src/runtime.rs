@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     io,
     sync::mpsc::{Receiver, Sender, channel},
     time::Duration,
@@ -12,7 +13,7 @@ use crate::{
     element::{Component, Element},
 };
 
-pub trait Event: 'static {}
+pub trait Event: Any {}
 
 pub struct Runtime<T: Element> {
     bus: Receiver<Box<dyn Event>>,
@@ -23,7 +24,10 @@ pub struct Runtime<T: Element> {
 impl<T: Element> Runtime<T> {
     pub fn new(root: T) -> Self {
         let (handle, bus) = channel();
-        let context = Context { handle, shutdown_requested: true };
+        let context = Context {
+            handle,
+            shutdown_requested: true,
+        };
         Self { bus, context, root }
     }
 
@@ -33,7 +37,9 @@ impl<T: Element> Runtime<T> {
         RuntimeError: From<<<D as Driver>::Backend as Backend>::Error>,
     {
         driver.terminal().draw(|frame| {
-            self.root.clone().run(Component::new(&mut self.context));
+            self.root
+                .clone()
+                .run(Component::new_render(&mut self.context, frame));
         })?;
 
         Ok(())
@@ -41,7 +47,9 @@ impl<T: Element> Runtime<T> {
 
     pub fn update(&mut self) {
         while let Ok(event) = self.bus.recv_timeout(Duration::from_millis(16)) {
-            self.root.clone().run(Component::new(&mut self.context));
+            self.root
+                .clone()
+                .run(Component::new_update(&mut self.context, &*event));
         }
     }
 

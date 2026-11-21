@@ -4,12 +4,18 @@ use vtui_macros::component;
 #[component]
 fn App(c: Component) {
     c.compose(|ui| {
-        ui.element(Button { label: "Click me".into() });
+        ui.element(Button {
+            label: "Click me".into(),
+        });
         ui.element(Div {
             children: |ui| {
-                ui.element(Button { label: "Save".into() });
-                ui.element(Button { label: "Cancel".into() });
-            }
+                ui.element(Button {
+                    label: "Save".into(),
+                });
+                ui.element(Button {
+                    label: "Cancel".into(),
+                });
+            },
         });
     });
 }
