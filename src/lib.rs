@@ -2,12 +2,13 @@ pub use crate::launch::launch;
 
 pub mod events;
 
+pub mod prelude {
+    pub use crate::element::{Component, Element};
+    pub use vtui_macros::component;
+}
+
 pub(crate) mod drivers;
 pub(crate) mod element;
 pub(crate) mod launch;
+pub(crate) mod layout;
 pub(crate) mod runtime;
-
-pub mod prelude {
-    pub use vtui_macros::component;
-    pub use crate::element::{Component, Element};
-}

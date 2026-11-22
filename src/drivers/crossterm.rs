@@ -12,7 +12,7 @@ use ratatui::{
     prelude::{Backend, CrosstermBackend},
 };
 
-use crate::drivers::Driver;
+use crate::{drivers::Driver, runtime::RuntimeHandle};
 
 pub struct CrosstermDriver<W: Write> {
     terminal: Terminal<CrosstermBackend<W>>,
@@ -55,5 +55,13 @@ impl<W: Write> CrosstermDriver<W> {
         let backend = CrosstermBackend::new(writer);
         let terminal = Terminal::new(backend)?;
         Ok(Self { terminal })
+    }
+
+    pub fn handle_events(&self, handle: &RuntimeHandle) {
+        std::thread::spawn(|| {
+            loop {
+                let event = crossterm::event::read().unwrap();
+            }
+        });
     }
 }

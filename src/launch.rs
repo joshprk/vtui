@@ -12,8 +12,10 @@ impl LaunchBuilder {
     fn launch(self, root: impl Element) -> Result<(), RuntimeError> {
         let mut runtime = Runtime::new(root);
         let mut driver = CrosstermDriver::new(io::stdout())?;
+        let handle = runtime.handle();
 
         driver.setup()?;
+        driver.handle_events(handle);
 
         loop {
             runtime.render(&mut driver)?;

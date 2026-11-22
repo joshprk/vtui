@@ -1,17 +1,20 @@
 use std::{any::Any, cell::RefCell, ops::Deref};
 
-use ratatui::{buffer::Buffer, layout::Rect};
+use ratatui::buffer::Buffer;
 
-use crate::runtime::{Context, Event};
+use crate::{
+    layout::LogicalRect,
+    runtime::{Context, Event},
+};
 
 pub trait Element: Clone {
     fn run(self, c: Component);
 
-    fn render(self, context: &Context, buffer: &mut Buffer, rect: Rect) {
+    fn render(self, context: &Context, buffer: &mut Buffer, rect: impl Into<LogicalRect>) {
         let ui = Ui::Render {
             context,
             buffer,
-            rect,
+            rect: rect.into(),
         };
         self.run(Component {
             ui: RefCell::new(ui),
@@ -75,7 +78,7 @@ pub enum Ui<'a> {
     Render {
         context: &'a Context,
         buffer: &'a mut Buffer,
-        rect: Rect,
+        rect: LogicalRect,
     },
     Update {
         context: &'a mut Context,
@@ -99,7 +102,9 @@ impl Ui<'_> {
 
 impl Drop for Ui<'_> {
     fn drop(&mut self) {
-        if !std::thread::panicking() && let Ui::Update { pending, .. } = self {
+        if !std::thread::panicking()
+            && let Ui::Update { pending, .. } = self
+        {
             for listener in std::mem::take(pending) {
                 listener(self);
             }
@@ -110,7 +115,7 @@ impl Drop for Ui<'_> {
 pub struct Canvas<'a> {
     context: &'a Context,
     buffer: &'a mut Buffer,
-    rect: Rect,
+    rect: LogicalRect,
 }
 
 impl Canvas<'_> {
@@ -122,7 +127,7 @@ impl Canvas<'_> {
         self.buffer
     }
 
-    pub fn area(&self) -> Rect {
+    pub fn area(&self) -> LogicalRect {
         self.rect
     }
 }

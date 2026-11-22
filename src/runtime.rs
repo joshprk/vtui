@@ -20,7 +20,7 @@ pub struct Runtime<T: Element> {
 
 impl<T: Element> Runtime<T> {
     pub fn new(root: T) -> Self {
-        let (context, bus) = Context::with_channel();
+        let (context, bus) = Context::channel();
         Self { bus, context, root }
     }
 
@@ -50,6 +50,15 @@ impl<T: Element> Runtime<T> {
     pub fn should_exit(&self) -> bool {
         self.context.shutdown_requested
     }
+
+    pub fn handle(&self) -> &RuntimeHandle {
+        &self.context.handle
+    }
+}
+
+#[derive(Clone)]
+pub struct RuntimeHandle {
+    inner: Sender<Box<dyn Event>>,
 }
 
 #[derive(Debug, Error)]
@@ -59,15 +68,15 @@ pub enum RuntimeError {
 }
 
 pub struct Context {
-    handle: Sender<Box<dyn Event>>,
+    pub handle: RuntimeHandle,
     pub shutdown_requested: bool,
 }
 
 impl Context {
-    pub fn with_channel() -> (Self, Receiver<Box<dyn Event>>) {
+    pub fn channel() -> (Self, Receiver<Box<dyn Event>>) {
         let (tx, rx) = channel();
         let context = Context {
-            handle: tx,
+            handle: RuntimeHandle { inner: tx },
             shutdown_requested: false,
         };
         (context, rx)
