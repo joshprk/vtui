@@ -1,6 +1,6 @@
 use std::{any::Any, cell::RefCell, ops::Deref};
 
-use ratatui::{buffer::Buffer, widgets::Widget};
+use ratatui::buffer::Buffer;
 
 use crate::{
     layout::LogicalRect,

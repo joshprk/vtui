@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::{drivers::Driver, element::Element};
 
-pub trait Event: Any {}
+pub trait Event: Any + Send {}
 
 pub struct Runtime<T: Element> {
     bus: Receiver<Box<dyn Event>>,
