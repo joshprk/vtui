@@ -2,7 +2,7 @@ use std::{
     any::Any,
     io,
     sync::mpsc::{Receiver, Sender, channel},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use ratatui::backend::Backend;
@@ -39,10 +39,11 @@ impl<T: Element> Runtime<T> {
     }
 
     pub fn update(&mut self) {
+        let deadline = Instant::now() + Duration::from_millis(16);
         let event = self.bus.recv().unwrap();
         self.root.clone().update(&mut self.context, &*event);
 
-        while let Ok(event) = self.bus.recv_timeout(Duration::from_millis(16)) {
+        while let Ok(event) = self.bus.recv_timeout(deadline - Instant::now()) {
             self.root.clone().update(&mut self.context, &*event);
         }
     }
