@@ -20,11 +20,7 @@ pub struct Runtime<T: Element> {
 
 impl<T: Element> Runtime<T> {
     pub fn new(root: T) -> Self {
-        let (handle, bus) = channel();
-        let context = Context {
-            handle,
-            shutdown_requested: true,
-        };
+        let (context, bus) = Context::with_channel();
         Self { bus, context, root }
     }
 
@@ -43,6 +39,9 @@ impl<T: Element> Runtime<T> {
     }
 
     pub fn update(&mut self) {
+        let event = self.bus.recv().unwrap();
+        self.root.clone().update(&mut self.context, &*event);
+
         while let Ok(event) = self.bus.recv_timeout(Duration::from_millis(16)) {
             self.root.clone().update(&mut self.context, &*event);
         }
@@ -62,4 +61,15 @@ pub enum RuntimeError {
 pub struct Context {
     handle: Sender<Box<dyn Event>>,
     pub shutdown_requested: bool,
+}
+
+impl Context {
+    pub fn with_channel() -> (Self, Receiver<Box<dyn Event>>) {
+        let (tx, rx) = channel();
+        let context = Context {
+            handle: tx,
+            shutdown_requested: false,
+        };
+        (context, rx)
+    }
 }

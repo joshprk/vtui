@@ -113,6 +113,20 @@ pub struct Canvas<'a> {
     rect: Rect,
 }
 
+impl Canvas<'_> {
+    pub fn buffer(&self) -> &Buffer {
+        self.buffer
+    }
+
+    pub fn buffer_mut(&mut self) -> &mut Buffer {
+        self.buffer
+    }
+
+    pub fn area(&self) -> Rect {
+        self.rect
+    }
+}
+
 pub struct EventData<'a, E: Event> {
     context: &'a mut Context,
     event: &'a E,
