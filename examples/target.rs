@@ -1,5 +1,4 @@
-use vtui::element::{Component, Ui};
-use vtui_macros::component;
+use vtui::{events::Tick, prelude::*};
 
 #[component]
 fn App(c: Component) {
@@ -7,32 +6,16 @@ fn App(c: Component) {
         ui.element(Button {
             label: "Click me".into(),
         });
-        ui.element(Div {
-            children: |ui| {
-                ui.element(Button {
-                    label: "Save".into(),
-                });
-                ui.element(Button {
-                    label: "Cancel".into(),
-                });
-            },
-        });
     });
 }
 
 #[component]
 fn Button(c: Component, label: String) {
-    c.render(|| {});
+    c.listen::<Tick>(|evt| {
+        evt.request_shutdown();
+    });
 
     c.compose(|_| {})
-}
-
-#[component]
-fn Div<F>(c: Component, children: F)
-where
-    F: FnOnce(&mut Ui) + Clone,
-{
-    c.compose(children)
 }
 
 fn main() {

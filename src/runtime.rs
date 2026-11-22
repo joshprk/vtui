@@ -8,10 +8,7 @@ use std::{
 use ratatui::backend::Backend;
 use thiserror::Error;
 
-use crate::{
-    drivers::Driver,
-    element::{Component, Element},
-};
+use crate::{drivers::Driver, element::Element};
 
 pub trait Event: Any {}
 
@@ -37,9 +34,9 @@ impl<T: Element> Runtime<T> {
         RuntimeError: From<<<D as Driver>::Backend as Backend>::Error>,
     {
         driver.terminal().draw(|frame| {
-            self.root
-                .clone()
-                .run(Component::new_render(&mut self.context, frame));
+            let rect = frame.area();
+            let buffer = frame.buffer_mut();
+            self.root.clone().render(&mut self.context, buffer, rect);
         })?;
 
         Ok(())
@@ -47,9 +44,7 @@ impl<T: Element> Runtime<T> {
 
     pub fn update(&mut self) {
         while let Ok(event) = self.bus.recv_timeout(Duration::from_millis(16)) {
-            self.root
-                .clone()
-                .run(Component::new_update(&mut self.context, &*event));
+            self.root.clone().update(&mut self.context, &*event);
         }
     }
 
@@ -66,5 +61,5 @@ pub enum RuntimeError {
 
 pub struct Context {
     handle: Sender<Box<dyn Event>>,
-    shutdown_requested: bool,
+    pub shutdown_requested: bool,
 }

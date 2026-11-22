@@ -78,7 +78,7 @@ impl ComponentFn {
             #[derive(Clone)]
             #definition
 
-            impl #impl_generics ::vtui::element::Element for #name #ty_generics #where_clause {
+            impl #impl_generics ::vtui::prelude::Element for #name #ty_generics #where_clause {
                 fn run(self, #context) #output {
                     let Self { #(#bindings),* } = self;
                     #(#body)*

@@ -1,96 +1,133 @@
-use std::{any::TypeId, cell::RefCell};
+use std::{any::Any, cell::RefCell, ops::Deref};
 
-use ratatui::{Frame, buffer::Buffer, layout::Rect};
+use ratatui::{buffer::Buffer, layout::Rect};
 
 use crate::runtime::{Context, Event};
 
 pub trait Element: Clone {
     fn run(self, c: Component);
-}
 
-pub enum Pass<'a> {
-    Render {
-        area: Rect,
-        buffer: &'a mut Buffer,
-    },
-    Update {
-        event: &'a dyn Event,
-        pending: RefCell<Vec<Box<dyn FnOnce()>>>,
-    },
-}
+    fn render(self, context: &Context, buffer: &mut Buffer, rect: Rect) {
+        let ui = Ui::Render {
+            context,
+            buffer,
+            rect,
+        };
+        self.run(Component {
+            ui: RefCell::new(ui),
+        })
+    }
 
-impl Pass<'_> {
-    pub fn next(&mut self) -> Pass<'_> {
-        match self {
-            Pass::Render { area, buffer } => Pass::Render {
-                area: *area,
-                buffer: &mut **buffer,
-            },
-            Pass::Update { event, .. } => Pass::Update {
-                event: *event,
-                pending: RefCell::default(),
-            },
-        }
+    fn update(self, context: &mut Context, event: &dyn Event) {
+        let ui = Ui::Update {
+            context,
+            event,
+            pending: Vec::default(),
+        };
+        self.run(Component {
+            ui: RefCell::new(ui),
+        })
     }
 }
 
 pub struct Component<'a> {
-    context: &'a mut Context,
-    pass: Pass<'a>,
-}
-
-impl<'a> Component<'a> {
-    pub fn new_render(context: &'a mut Context, frame: &'a mut Frame) -> Self {
-        let pass = Pass::Render {
-            area: frame.area(),
-            buffer: frame.buffer_mut(),
-        };
-        Self { context, pass }
-    }
-
-    pub fn new_update(context: &'a mut Context, event: &'a dyn Event) -> Self {
-        let pass = Pass::Update {
-            event,
-            pending: RefCell::default(),
-        };
-        Self { context, pass }
-    }
+    ui: RefCell<Ui<'a>>,
 }
 
 impl Component<'_> {
     pub fn compose(self, callback: impl FnOnce(&mut Ui)) {
-        let mut ui = Ui(self);
-        callback(&mut ui);
-
-        if let Pass::Update { pending, .. } = ui.0.pass {
-            for listener_callback in pending.into_inner().into_iter() {
-                listener_callback();
-            }
-        }
+        callback(&mut self.ui.into_inner());
     }
 
-    pub fn render(&self, callback: impl Fn()) {
-        if let Pass::Render { .. } = self.pass {
-            callback();
-        }
-    }
-
-    pub fn listen<E: Event>(&self, callback: impl FnOnce() + 'static) {
-        if let Pass::Update { ref pending, event } = self.pass
-            && event.type_id() == TypeId::of::<E>()
+    pub fn render(&self, callback: impl Fn(&mut Canvas) + 'static) {
+        if let Ui::Render {
+            context,
+            buffer,
+            rect,
+        } = &mut *self.ui.borrow_mut()
         {
-            pending.borrow_mut().push(Box::new(callback));
+            callback(&mut Canvas {
+                context: *context,
+                buffer,
+                rect: *rect,
+            });
+        }
+    }
+
+    pub fn listen<E: Event>(&self, callback: impl FnOnce(&mut EventData<E>) + 'static) {
+        if let Ui::Update { event, pending, .. } = &mut *self.ui.borrow_mut()
+            && let Some(event) = (*event as &dyn Any).downcast_ref::<E>()
+        {
+            let callback = Box::new(move |ui: &mut Ui| {
+                let Ui::Update { context, .. } = ui else {
+                    unreachable!("deferred callback must be an update");
+                };
+                callback(&mut EventData { context, event });
+            });
+            pending.push(callback);
         }
     }
 }
 
-pub struct Ui<'a>(Component<'a>);
+pub type Deferred<'a> = Box<dyn FnOnce(&mut Ui) + 'a>;
+
+pub enum Ui<'a> {
+    Render {
+        context: &'a Context,
+        buffer: &'a mut Buffer,
+        rect: Rect,
+    },
+    Update {
+        context: &'a mut Context,
+        event: &'a dyn Event,
+        pending: Vec<Deferred<'a>>,
+    },
+}
 
 impl Ui<'_> {
     pub fn element(&mut self, element: impl Element) {
-        element.run(Component {
-            context: &mut *self.0.context,
-            pass: self.0.pass.next(),
-        });
+        match self {
+            Self::Render {
+                context,
+                buffer,
+                rect,
+            } => element.render(context, buffer, *rect),
+            Self::Update { context, event, .. } => element.update(context, *event),
+        }
+    }
+}
+
+impl Drop for Ui<'_> {
+    fn drop(&mut self) {
+        if !std::thread::panicking() && let Ui::Update { pending, .. } = self {
+            for listener in std::mem::take(pending) {
+                listener(self);
+            }
+        }
+    }
+}
+
+pub struct Canvas<'a> {
+    context: &'a Context,
+    buffer: &'a mut Buffer,
+    rect: Rect,
+}
+
+pub struct EventData<'a, E: Event> {
+    context: &'a mut Context,
+    event: &'a E,
+}
+
+impl<E: Event> EventData<'_, E> {
+    pub fn request_shutdown(&mut self) {
+        self.context.shutdown_requested = true;
+    }
+}
+
+impl<'a, E: Event> Deref for EventData<'a, E> {
+    type Target = E;
+
+    fn deref(&self) -> &Self::Target {
+        self.event
     }
 }
