@@ -1,7 +1,7 @@
 use std::{
     any::Any,
     io,
-    sync::mpsc::{Receiver, Sender, channel},
+    sync::mpsc::{Receiver, SendError, Sender, channel},
     time::{Duration, Instant},
 };
 
@@ -60,6 +60,12 @@ impl<T: Element> Runtime<T> {
 #[derive(Clone)]
 pub struct RuntimeHandle {
     inner: Sender<Box<dyn Event>>,
+}
+
+impl RuntimeHandle {
+    pub fn send(&self, event: Box<dyn Event>) -> Result<(), SendError<Box<dyn Event>>> {
+        self.inner.send(event)
+    }
 }
 
 #[derive(Debug, Error)]

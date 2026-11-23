@@ -1,4 +1,4 @@
-use vtui::{events::Tick, prelude::*};
+use vtui::{events::MouseDown, prelude::*};
 
 #[component]
 fn App(c: Component) {
@@ -11,7 +11,7 @@ fn App(c: Component) {
 
 #[component]
 fn Button(c: Component, label: String) {
-    c.listen::<Tick>(|evt| {
+    c.listen::<MouseDown>(|evt| {
         evt.request_shutdown();
     });
 
