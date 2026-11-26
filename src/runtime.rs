@@ -39,12 +39,15 @@ impl<T: Element> Runtime<T> {
     }
 
     pub fn update(&mut self) {
+        let mut propagate_events = |event: &Box<dyn Event>| {
+            self.root.clone().update(&mut self.context, event.as_ref());
+        };
         let deadline = Instant::now() + Duration::from_millis(16);
         let event = self.bus.recv().unwrap();
-        self.root.clone().update(&mut self.context, &*event);
+        propagate_events(&event);
 
         while let Ok(event) = self.bus.recv_timeout(deadline - Instant::now()) {
-            self.root.clone().update(&mut self.context, &*event);
+            propagate_events(&event);
         }
     }
 
