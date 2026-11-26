@@ -1,25 +1,38 @@
 use crate::{
     input::{KeyCode, MouseButton, MouseScrollDirection},
-    runtime::Event,
+    transport::{Event, MouseEvent},
 };
 
-/// A mouse button was pressed. Coordinates are terminal-relative.
+/// An event requesting an additional update cycle before the next draw.
+pub struct Tick;
+
+impl Event for Tick {}
+
+/// A mouse button was pressed.
 pub struct MouseDown {
     pub x: u16,
     pub y: u16,
     pub button: MouseButton,
 }
 
-impl Event for MouseDown {}
+impl MouseEvent for MouseDown {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
 
-/// A mouse button was released. Coordinates are terminal-relative.
+/// A mouse button was released.
 pub struct MouseUp {
     pub x: u16,
     pub y: u16,
     pub button: MouseButton,
 }
 
-impl Event for MouseUp {}
+impl MouseEvent for MouseUp {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
 
 /// The mouse cursor moved without a button held.
 pub struct MouseHover {
@@ -27,7 +40,11 @@ pub struct MouseHover {
     pub y: u16,
 }
 
-impl Event for MouseHover {}
+impl MouseEvent for MouseHover {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
 
 /// The mouse cursor moved with a button held.
 pub struct MouseDrag {
@@ -36,7 +53,11 @@ pub struct MouseDrag {
     pub button: MouseButton,
 }
 
-impl Event for MouseDrag {}
+impl MouseEvent for MouseDrag {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
 
 /// The mouse wheel was scrolled.
 pub struct MouseScroll {
@@ -45,7 +66,11 @@ pub struct MouseScroll {
     pub direction: MouseScrollDirection,
 }
 
-impl Event for MouseScroll {}
+impl MouseEvent for MouseScroll {
+    fn coords(&self) -> (u16, u16) {
+        (self.x, self.y)
+    }
+}
 
 /// A keyboard button was pressed.
 pub struct KeyPress {
@@ -56,7 +81,9 @@ impl Event for KeyPress {}
 
 /// A keyboard button was repeated.
 ///
-/// Only emitted by terminals which report repeat events (such as via the Kitty keyboard protocol).
+/// # Compatibility
+///
+/// This event is only emitted on terminal emulators which support the Kitty keyboard protocol.
 pub struct KeyRepeat {
     pub key: KeyCode,
 }
@@ -65,7 +92,9 @@ impl Event for KeyRepeat {}
 
 /// A keyboard button was released.
 ///
-/// Only emitted by terminals which report release events (such as via the Kitty keyboard protocol).
+/// # Compatibility
+///
+/// This event is only emitted on terminal emulators which support the Kitty keyboard protocol.
 pub struct KeyRelease {
     pub key: KeyCode,
 }
@@ -79,3 +108,8 @@ pub struct Resize {
 }
 
 impl Event for Resize {}
+
+/// The focused component changed.
+pub struct FocusChanged {}
+
+impl Event for FocusChanged {}

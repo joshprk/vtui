@@ -18,7 +18,7 @@ use crate::{
         Input, KeyCode, MediaKeyCode, ModifierKeyCode, ModifierKeyDirection, MouseButton,
         MouseScrollDirection,
     },
-    runtime::RuntimeHandle,
+    transport::MessageSender,
 };
 
 pub struct CrosstermDriver<W: Write> {
@@ -66,17 +66,17 @@ impl<W: Write> CrosstermDriver<W> {
 }
 
 impl<W: Write> CrosstermDriver<W> {
-    pub fn handle_events(&self, handle: &RuntimeHandle) {
-        let handle = handle.clone();
+    pub fn spawn_event_handler(&self, tx: MessageSender) {
         std::thread::spawn(move || {
             loop {
-                let event = crossterm::event::read().unwrap();
+                let event = crossterm::event::read().expect("crossterm::event::read failed");
 
-                let Some(input) = normalize_input(event) else {
-                    continue;
+                let msg = match normalize_input(event) {
+                    Some(input) => input.to_message(),
+                    None => continue,
                 };
 
-                if handle.send(input.into()).is_err() {
+                if tx.send(msg).is_err() {
                     break;
                 }
             }

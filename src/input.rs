@@ -3,7 +3,7 @@ use crate::{
         KeyPress, KeyRelease, KeyRepeat, MouseDown, MouseDrag, MouseHover, MouseScroll, MouseUp,
         Resize,
     },
-    runtime::Event,
+    transport::Message,
 };
 
 /// A modifier key.
@@ -133,18 +133,24 @@ pub enum Input {
     },
 }
 
-impl From<Input> for Box<dyn Event> {
+impl From<Input> for Message {
     fn from(value: Input) -> Self {
         match value {
-            Input::MouseDown { x, y, button } => Box::new(MouseDown { x, y, button }),
-            Input::MouseUp { x, y, button } => Box::new(MouseUp { x, y, button }),
-            Input::MouseHover { x, y } => Box::new(MouseHover { x, y }),
-            Input::MouseDrag { x, y, button } => Box::new(MouseDrag { x, y, button }),
-            Input::MouseScroll { x, y, direction } => Box::new(MouseScroll { x, y, direction }),
-            Input::KeyPress { key } => Box::new(KeyPress { key }),
-            Input::KeyRepeat { key } => Box::new(KeyRepeat { key }),
-            Input::KeyRelease { key } => Box::new(KeyRelease { key }),
-            Input::Resize { width, height } => Box::new(Resize { width, height }),
+            Input::MouseDown { x, y, button } => Message::new(MouseDown { x, y, button }),
+            Input::MouseUp { x, y, button } => Message::new(MouseUp { x, y, button }),
+            Input::MouseHover { x, y } => Message::new(MouseHover { x, y }),
+            Input::MouseDrag { x, y, button } => Message::new(MouseDrag { x, y, button }),
+            Input::MouseScroll { x, y, direction } => Message::new(MouseScroll { x, y, direction }),
+            Input::KeyPress { key } => Message::new(KeyPress { key }),
+            Input::KeyRepeat { key } => Message::new(KeyRepeat { key }),
+            Input::KeyRelease { key } => Message::new(KeyRelease { key }),
+            Input::Resize { width, height } => Message::new(Resize { width, height }),
         }
+    }
+}
+
+impl Input {
+    pub fn to_message(self) -> Message {
+        Message::from(self)
     }
 }

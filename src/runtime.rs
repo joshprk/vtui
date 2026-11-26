@@ -1,94 +1,79 @@
-use std::{
-    any::Any,
-    io,
-    sync::mpsc::{Receiver, SendError, Sender, channel},
-    time::{Duration, Instant},
+use std::time::{Duration, Instant};
+
+use ratatui::prelude::Backend;
+
+use crate::{
+    arena::Arena,
+    component::Node,
+    context::Context,
+    drivers::Driver,
+    errors::RuntimeError,
+    events::Tick,
+    transport::{Dispatch, Message, MessageBus},
 };
 
-use ratatui::backend::Backend;
-use thiserror::Error;
-
-use crate::{drivers::Driver, element::Element};
-
-pub trait Event: Any + Send {}
-
-pub struct Runtime<T: Element> {
-    bus: Receiver<Box<dyn Event>>,
+pub struct Runtime {
+    arena: Arena,
     context: Context,
-    root: T,
+    bus: MessageBus,
 }
 
-impl<T: Element> Runtime<T> {
-    pub fn new(root: T) -> Self {
-        let (context, bus) = Context::channel();
-        Self { bus, context, root }
+impl Runtime {
+    pub fn new(node: Node, bus: MessageBus) -> Self {
+        let arena = Arena::from(node);
+        let handle = bus.handle();
+        let context = Context::new(handle.clone());
+
+        Self {
+            arena,
+            context,
+            bus,
+        }
     }
 
-    pub fn render<D>(&mut self, driver: &mut D) -> Result<(), RuntimeError>
+    pub fn draw<D>(&mut self, driver: &mut D) -> Result<(), RuntimeError>
     where
         D: Driver,
         RuntimeError: From<<<D as Driver>::Backend as Backend>::Error>,
     {
-        driver.terminal().draw(|frame| {
-            let rect = frame.area();
-            let buffer = frame.buffer_mut();
-            self.root.clone().render(&mut self.context, buffer, rect);
+        let terminal = driver.terminal();
+
+        terminal.draw(|f| {
+            self.arena.render(f, &self.context);
         })?;
 
         Ok(())
     }
 
     pub fn update(&mut self) {
-        let mut propagate_events = |event: &Box<dyn Event>| {
-            self.root.clone().update(&mut self.context, event.as_ref());
-        };
-        let deadline = Instant::now() + Duration::from_millis(16);
-        let event = self.bus.recv().unwrap();
-        propagate_events(&event);
+        if self.context.tick_requested() {
+            let _ = self.bus.handle().send(Tick {});
+            self.context.clear_tick_request();
+        }
 
-        while let Ok(event) = self.bus.recv_timeout(deadline - Instant::now()) {
-            propagate_events(&event);
+        let deadline = Instant::now() + Duration::from_millis(16);
+        let msg = self.bus.recv();
+
+        self.dispatch(msg);
+
+        while let Some(msg) = self.bus.recv_timeout(deadline - Instant::now()) {
+            self.dispatch(msg);
         }
     }
 
     pub fn should_exit(&self) -> bool {
-        self.context.shutdown_requested
+        self.context.shutdown_requested()
     }
 
-    pub fn handle(&self) -> &RuntimeHandle {
-        &self.context.handle
+    fn dispatch(&mut self, msg: Message) {
+        let dispatch = Dispatch::new(&mut self.arena, &mut self.context);
+        msg.dispatch(dispatch);
+        self.commit();
     }
-}
 
-#[derive(Clone)]
-pub struct RuntimeHandle {
-    inner: Sender<Box<dyn Event>>,
-}
-
-impl RuntimeHandle {
-    pub fn send(&self, event: Box<dyn Event>) -> Result<(), SendError<Box<dyn Event>>> {
-        self.inner.send(event)
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum RuntimeError {
-    #[error(transparent)]
-    Io(#[from] io::Error),
-}
-
-pub struct Context {
-    pub handle: RuntimeHandle,
-    pub shutdown_requested: bool,
-}
-
-impl Context {
-    pub fn channel() -> (Self, Receiver<Box<dyn Event>>) {
-        let (tx, rx) = channel();
-        let context = Context {
-            handle: RuntimeHandle { inner: tx },
-            shutdown_requested: false,
-        };
-        (context, rx)
+    fn commit(&mut self) {
+        for cmd in self.context.drain_commands() {
+            cmd.reduce(&mut self.context, &mut self.arena);
+        }
     }
 }
